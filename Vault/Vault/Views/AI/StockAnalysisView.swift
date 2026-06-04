@@ -1,0 +1,309 @@
+//
+//  StockAnalysisView.swift
+//  Vault
+//
+//  Per-stock decision-support sheet: position + analyst consensus header,
+//  Claude's news-grounded sections (What's happening / Bull / Bear / Watch /
+//  Lean), recent headlines, and a follow-up "Ask Claude" field.
+//
+
+import SwiftUI
+
+struct StockAnalysisView: View {
+    let snapshot: StockSnapshot
+    var currency: DisplayCurrency = .gbp
+
+    @State private var viewModel: StockAnalysisViewModel
+    @State private var draft = ""
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var inputFocused: Bool
+
+    init(snapshot: StockSnapshot, currency: DisplayCurrency = .gbp) {
+        self.snapshot = snapshot
+        self.currency = currency
+        _viewModel = State(initialValue: StockAnalysisViewModel(snapshot: snapshot, currency: currency))
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            positionStrip
+            content
+            askBar
+        }
+        .frame(maxWidth: 920)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .toast($viewModel.toast)
+        .presentationBackground(.ultraThickMaterial)
+        .presentationCornerRadius(Theme.sheetRadius)
+        .presentationDetents([.large])
+        .task { await viewModel.generate() }
+    }
+
+    // MARK: Header
+
+    private var header: some View {
+        HStack(spacing: 14) {
+            TickerMark(ticker: snapshot.ticker, sector: snapshot.sector, size: 46)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(snapshot.ticker).font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Image(systemName: "sparkles").font(.system(size: 14)).foregroundStyle(Theme.aiPurple)
+                }
+                Text("Decision support · \(snapshot.companyName)")
+                    .font(.system(size: 13)).foregroundStyle(Theme.inkDim).lineLimit(1)
+            }
+            Spacer()
+            Button { dismiss() } label: {
+                Image(systemName: "xmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                    .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
+            }.buttonStyle(.plain)
+        }
+        .padding(.horizontal, 30).padding(.top, 24).padding(.bottom, 16)
+    }
+
+    // MARK: Position + consensus strip
+
+    private var positionStrip: some View {
+        HStack(spacing: 12) {
+            infoChip(label: "Your position",
+                     value: "\(Int(snapshot.shares)) sh",
+                     note: "@ \(Money.currency(snapshot.averageCost, currency: currency))")
+            infoChip(label: "Return",
+                     value: Money.percent(snapshot.returnPercent),
+                     note: Money.currency(snapshot.currentPrice, currency: currency),
+                     tint: Theme.tone(snapshot.returnPercent))
+            if let c = viewModel.consensus {
+                infoChip(label: "Analyst consensus",
+                         value: c.consensus,
+                         note: "\(c.totalBuy) buy · \(c.hold) hold · \(c.totalSell) sell",
+                         tint: consensusTint(c))
+            } else {
+                infoChip(label: "Live news", value: "Web", note: "via Claude search", tint: Theme.aiPurple)
+            }
+        }
+        .padding(.horizontal, 30).padding(.bottom, 6)
+    }
+
+    private func infoChip(label: String, value: String, note: String, tint: Color = Theme.ink) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(.system(size: 11, weight: .semibold)).tracking(0.6).textCase(.uppercase).foregroundStyle(Theme.inkDim)
+            Text(value).font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
+            Text(note).font(.system(size: 11.5)).foregroundStyle(Theme.inkDim).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16).padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line.opacity(0.12), lineWidth: 0.5))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func consensusTint(_ c: RecommendationTrend) -> Color {
+        switch c.consensus {
+        case "Strong Buy", "Buy", "Add": return Theme.gain
+        case "Sell": return Theme.loss
+        default: return Theme.ink
+        }
+    }
+
+    // MARK: Content
+
+    private var content: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(viewModel.messages) { message in
+                        if message.role == .user {
+                            userBubble(message.text)
+                        } else {
+                            AnalysisSections(text: message.text)
+                        }
+                    }
+                    if viewModel.isLoading {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small).tint(Theme.aiPurple)
+                            Text("Claude is reading the latest news…").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+                        }.id("loading")
+                    }
+                    if !viewModel.headlines.isEmpty {
+                        sourcesView
+                    }
+                }
+                .padding(.horizontal, 30).padding(.vertical, 18)
+            }
+            .scrollIndicators(.hidden)
+            .onChange(of: viewModel.messages.count) { _, _ in
+                if let last = viewModel.messages.last {
+                    withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
+            }
+        }
+    }
+
+    private func userBubble(_ text: String) -> some View {
+        HStack {
+            Spacer(minLength: 60)
+            Text(text).font(.system(size: 16)).foregroundStyle(Theme.ink)
+                .padding(.horizontal, 18).padding(.vertical, 12)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.accent.opacity(0.25)))
+        }
+    }
+
+    private var sourcesView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Recent headlines").vaultLabel()
+            ForEach(viewModel.headlines.prefix(5)) { item in
+                HStack(alignment: .top, spacing: 8) {
+                    Circle().fill(Theme.inkFaint).frame(width: 5, height: 5).padding(.top, 7)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.headline).font(.system(size: 13.5)).foregroundStyle(Theme.inkSoft).lineLimit(2)
+                        Text("\(item.source) · \(item.date.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.system(size: 11.5)).foregroundStyle(Theme.inkDim)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.line.opacity(0.05)))
+    }
+
+    // MARK: Ask bar
+
+    private var askBar: some View {
+        VStack(spacing: 12) {
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.suggestions, id: \.self) { s in
+                        Button { send(s) } label: {
+                            Text(s).font(.system(size: 13.5)).foregroundStyle(Theme.inkSoft)
+                                .padding(.horizontal, 15).padding(.vertical, 9).glassPill()
+                        }.buttonStyle(.plain)
+                    }
+                }.padding(.horizontal, 30)
+            }
+            .scrollIndicators(.hidden)
+
+            HStack(spacing: 12) {
+                TextField("Ask Claude about \(snapshot.ticker)…", text: $draft)
+                    .textFieldStyle(.plain).font(.system(size: 16.5)).foregroundStyle(Theme.ink)
+                    .focused($inputFocused).onSubmit { send(draft) }.padding(.leading, 22)
+                Button { send(draft) } label: {
+                    Image(systemName: "paperplane.fill").font(.system(size: 17))
+                        .foregroundStyle(Theme.onButton)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(LinearGradient(colors: [Theme.aiPurpleButton, Theme.aiPurpleButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                }
+                .buttonStyle(.plain)
+                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading)
+                .opacity(draft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1).padding(4)
+            }
+            .padding(4).glassPill().padding(.horizontal, 30)
+        }
+        .padding(.bottom, 24)
+    }
+
+    private func send(_ text: String) {
+        let toSend = text.trimmingCharacters(in: .whitespaces)
+        guard !toSend.isEmpty else { return }
+        draft = ""
+        inputFocused = false
+        Task { await viewModel.ask(toSend) }
+    }
+}
+
+// MARK: - Markdown section renderer
+
+/// Renders Claude's `## Heading` + body markdown into styled sections. Falls
+/// back to plain paragraphs when there are no headings (e.g. follow-up replies).
+private struct AnalysisSections: View {
+    let text: String
+
+    private struct Section: Identifiable { let id = UUID(); let title: String?; let body: String }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            ForEach(parse()) { section in
+                VStack(alignment: .leading, spacing: 6) {
+                    if let title = section.title {
+                        HStack(spacing: 8) {
+                            Image(systemName: icon(for: title))
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(tint(for: title))
+                            Text(title)
+                                .font(.system(size: 13, weight: .semibold)).tracking(0.4).textCase(.uppercase)
+                                .foregroundStyle(tint(for: title))
+                        }
+                    }
+                    Text(attributed(section.body))
+                        .font(.system(size: section.title == nil ? 16 : 16.5))
+                        .foregroundStyle(section.title == "Lean" ? Theme.ink : Theme.inkSoft)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func parse() -> [Section] {
+        let lines = text.components(separatedBy: "\n")
+        var sections: [Section] = []
+        var currentTitle: String?
+        var buffer: [String] = []
+
+        func flush() {
+            let body = buffer.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if currentTitle != nil || !body.isEmpty {
+                sections.append(Section(title: currentTitle, body: body))
+            }
+            buffer = []
+        }
+
+        for line in lines {
+            if line.hasPrefix("## ") {
+                flush()
+                currentTitle = line.replacingOccurrences(of: "## ", with: "").trimmingCharacters(in: .whitespaces)
+            } else {
+                buffer.append(line)
+            }
+        }
+        flush()
+        return sections.filter { $0.title != nil || !$0.body.isEmpty }
+    }
+
+    private func attributed(_ body: String) -> AttributedString {
+        (try? AttributedString(markdown: body, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(body)
+    }
+
+    private func icon(for title: String) -> String {
+        switch title {
+        case "What's happening": return "newspaper"
+        case "Bull case": return "arrow.up.right"
+        case "Bear case": return "arrow.down.right"
+        case "What to watch": return "eye"
+        case "Lean": return "scalemass"
+        default: return "circle.fill"
+        }
+    }
+
+    private func tint(for title: String) -> Color {
+        switch title {
+        case "Bull case": return Theme.gain
+        case "Bear case": return Theme.loss
+        case "Lean": return Theme.aiPurple
+        default: return Theme.accent
+        }
+    }
+}
+
+#Preview {
+    Color.black.sheet(isPresented: .constant(true)) {
+        StockAnalysisView(snapshot: StockSnapshot(holding: MockData.holdings[4]))
+    }
+}
