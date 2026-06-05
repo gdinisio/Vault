@@ -17,7 +17,8 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
 
     @State private var finnhubKey = ""
-    @State private var anthropicKey = ""
+    @State private var geminiKey = ""
+    @State private var groqKey = ""
     @State private var startingCashText = ""
     @State private var toastMessage: Toast?
 
@@ -156,16 +157,24 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 keyField(
                     title: "Finnhub API key",
-                    subtitle: "Live prices & ticker search",
+                    subtitle: "Live prices, ticker search & news",
                     help: "Free: sign up at finnhub.io → Dashboard → copy the API key.",
                     text: $finnhubKey
                 )
                 keyField(
-                    title: "Anthropic API key",
-                    subtitle: "Claude AI portfolio analysis",
-                    help: "Get one at console.anthropic.com → API Keys (requires billing credit).",
-                    text: $anthropicKey
+                    title: "Gemini API key",
+                    subtitle: "Primary AI analysis (Gemini Flash)",
+                    help: "Free tier: aistudio.google.com → Get API key.",
+                    text: $geminiKey
                 )
+                keyField(
+                    title: "Groq API key",
+                    subtitle: "Fallback AI when Gemini's limit is reached (Llama 3.3 70B)",
+                    help: "Free: console.groq.com → API Keys.",
+                    text: $groqKey
+                )
+                Text("AI analysis uses Gemini first, then falls back to Groq when Gemini's limit is reached. Add at least one key to enable in-app analysis.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.inkDim)
                 Button { saveKeys() } label: {
                     Text("Save keys")
                         .font(.system(size: 15, weight: .semibold))
@@ -233,13 +242,15 @@ struct SettingsView: View {
 
     private func load() {
         finnhubKey = KeychainService.shared.get(.finnhub) ?? ""
-        anthropicKey = KeychainService.shared.get(.anthropic) ?? ""
+        geminiKey = KeychainService.shared.get(.gemini) ?? ""
+        groqKey = KeychainService.shared.get(.groq) ?? ""
         startingCashText = String(Int(Money.convert(settings.startingPaperCash, to: settings.displayCurrency).rounded()))
     }
 
     private func saveKeys() {
         KeychainService.shared.set(finnhubKey.trimmingCharacters(in: .whitespacesAndNewlines), for: .finnhub)
-        KeychainService.shared.set(anthropicKey.trimmingCharacters(in: .whitespacesAndNewlines), for: .anthropic)
+        KeychainService.shared.set(geminiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: .gemini)
+        KeychainService.shared.set(groqKey.trimmingCharacters(in: .whitespacesAndNewlines), for: .groq)
         toastMessage = Toast(message: "API keys saved.", kind: .success)
     }
 

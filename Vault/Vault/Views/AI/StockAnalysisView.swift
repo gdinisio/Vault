@@ -3,8 +3,8 @@
 //  Vault
 //
 //  Per-stock decision-support sheet: position + analyst consensus header,
-//  Claude's news-grounded sections (What's happening / Bull / Bear / Watch /
-//  Lean), recent headlines, and a follow-up "Ask Claude" field.
+//  the AI's news-grounded sections (What's happening / Bull / Bear / Watch /
+//  Lean), recent headlines, and a follow-up "Ask AI" field.
 //
 
 import SwiftUI
@@ -79,7 +79,7 @@ struct StockAnalysisView: View {
                          note: "\(c.totalBuy) buy · \(c.hold) hold · \(c.totalSell) sell",
                          tint: consensusTint(c))
             } else {
-                infoChip(label: "Live news", value: "Web", note: "via Claude search", tint: Theme.aiPurple)
+                infoChip(label: "Live news", value: "On", note: "from recent headlines", tint: Theme.aiPurple)
             }
         }
         .padding(.horizontal, 30).padding(.bottom, 6)
@@ -115,6 +115,13 @@ struct StockAnalysisView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    if viewModel.messages.isEmpty && !viewModel.isLoading {
+                        Text("Add a **Gemini** or **Groq** API key in Settings to get a news-driven read on \(snapshot.ticker). Recent headlines are listed below.")
+                            .font(.system(size: 15)).foregroundStyle(Theme.inkSoft).lineSpacing(4)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(18)
+                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.line.opacity(0.05)))
+                    }
                     ForEach(viewModel.messages) { message in
                         if message.role == .user {
                             userBubble(message.text)
@@ -125,7 +132,7 @@ struct StockAnalysisView: View {
                     if viewModel.isLoading {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small).tint(Theme.aiPurple)
-                            Text("Claude is reading the latest news…").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+                            Text("Reading the latest news…").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
                         }.id("loading")
                     }
                     if !viewModel.headlines.isEmpty {
@@ -188,7 +195,7 @@ struct StockAnalysisView: View {
             .scrollIndicators(.hidden)
 
             HStack(spacing: 12) {
-                TextField("Ask Claude about \(snapshot.ticker)…", text: $draft)
+                TextField("Ask AI about \(snapshot.ticker)…", text: $draft)
                     .textFieldStyle(.plain).font(.system(size: 16.5)).foregroundStyle(Theme.ink)
                     .focused($inputFocused).onSubmit { send(draft) }.padding(.leading, 22)
                 Button { send(draft) } label: {
@@ -217,7 +224,7 @@ struct StockAnalysisView: View {
 
 // MARK: - Markdown section renderer
 
-/// Renders Claude's `## Heading` + body markdown into styled sections. Falls
+/// Renders the AI's `## Heading` + body markdown into styled sections. Falls
 /// back to plain paragraphs when there are no headings (e.g. follow-up replies).
 private struct AnalysisSections: View {
     let text: String

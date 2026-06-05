@@ -13,6 +13,8 @@ import Security
 nonisolated enum KeychainKey: String {
     case finnhub = "com.gdinisio.Vault.finnhubAPIKey"
     case anthropic = "com.gdinisio.Vault.anthropicAPIKey"
+    case gemini = "com.gdinisio.Vault.geminiAPIKey"
+    case groq = "com.gdinisio.Vault.groqAPIKey"
 }
 
 nonisolated struct KeychainService {

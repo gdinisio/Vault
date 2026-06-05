@@ -25,11 +25,8 @@ struct PaperPositionRowView: View {
                     .foregroundStyle(Theme.inkDim)
             }
             Spacer()
-            SparklineView(
-                points: Spark.series(seed: position.averageCost + 3, count: 20, trendingUp: up),
-                color: up ? Theme.gain : Theme.loss
-            )
-            .frame(width: 84, height: 30)
+            TickerSparkline(symbol: position.ticker, fallbackUp: up)
+                .frame(width: 84, height: 30)
             VStack(alignment: .trailing, spacing: 2) {
                 Text(Money.currency(position.currentValue, currency: currency))
                     .font(.system(size: 16, weight: .semibold, design: .monospaced))

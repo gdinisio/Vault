@@ -10,7 +10,7 @@
 import SwiftUI
 import SwiftData
 
-enum VaultTab: Hashable { case portfolio, paper, settings }
+enum VaultTab: Hashable { case portfolio, paper, watchlist, settings }
 
 struct ContentView: View {
     @Environment(AppSettings.self) private var settings
@@ -22,11 +22,29 @@ struct ContentView: View {
     @State private var selection: VaultTab = .portfolio
     @State private var showAI = false
 
+    /// AI analysis subject depends on the active tab: real holdings on the
+    /// Portfolio side, paper positions on the Paper Trading side.
+    private var aiInput: (digests: [HoldingDigest], summary: PortfolioSummary, title: String) {
+        if selection == .paper {
+            let s = paperVM.summary(positions: positions)
+            let invested = positions.reduce(0) { $0 + $1.costBasis }
+            let summary = PortfolioSummary(
+                totalInvested: invested,
+                currentValue: s.positionsValue,
+                profitLoss: s.openProfitLoss,
+                returnPercent: s.openReturnPercent,
+                annualisedReturn: 0,
+                performanceSignal: s.performanceSignal
+            )
+            return (positions.map { HoldingDigest($0) }, summary, "Paper account analysis")
+        }
+        return (holdings.map { HoldingDigest($0) }, portfolioVM.summary(for: holdings), "Portfolio analysis")
+    }
+
     private var performance: Double {
         switch selection {
-        case .portfolio: return portfolioVM.summary(for: holdings).performanceSignal
+        case .portfolio, .settings, .watchlist: return portfolioVM.summary(for: holdings).performanceSignal
         case .paper: return paperVM.summary(positions: positions).performanceSignal
-        case .settings: return portfolioVM.summary(for: holdings).performanceSignal
         }
     }
 
@@ -38,10 +56,12 @@ struct ContentView: View {
         }
         .sensoryFeedback(.selection, trigger: selection)
         .fullScreenCover(isPresented: $showAI) {
+            let input = aiInput
             AIAnalysisView(
-                holdings: holdings,
-                summary: portfolioVM.summary(for: holdings),
-                currency: settings.displayCurrency
+                digests: input.digests,
+                summary: input.summary,
+                currency: settings.displayCurrency,
+                title: input.title
             )
         }
         .task { await refreshFXRates() }
@@ -72,6 +92,9 @@ struct ContentView: View {
                     onOpenAI: { showAI = true },
                     onOpenSettings: { selection = .settings }
                 )
+            }
+            Tab("Watchlist", systemImage: "star", value: VaultTab.watchlist) {
+                WatchlistView(onOpenSettings: { selection = .settings })
             }
             Tab("Settings", systemImage: "gearshape", value: VaultTab.settings) {
                 SettingsView(settings: settings, paperVM: paperVM)

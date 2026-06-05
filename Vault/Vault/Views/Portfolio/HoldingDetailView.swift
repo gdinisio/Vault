@@ -112,7 +112,7 @@ struct HoldingDetailView: View {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles").foregroundStyle(Theme.aiPurple)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Analyse with Claude")
+                    Text("Analyse with AI")
                         .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
                     Text("News-driven read on \(holding.ticker) — hold, trim or add")
                         .font(.system(size: 12.5)).foregroundStyle(Theme.inkDim)

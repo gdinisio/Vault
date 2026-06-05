@@ -2,9 +2,9 @@
 //  StockAnalysisViewModel.swift
 //  Vault
 //
-//  Per-stock decision-support analysis. Grounds Claude in the user's actual
-//  position, live analyst consensus and recent company news (Finnhub), and
-//  lets Claude pull the freshest headlines via web search. Frames output as
+//  Per-stock decision-support analysis. Grounds the AI in the user's actual
+//  position, live analyst consensus and recent company news (Finnhub), then
+//  runs it through the provider chain (Gemini → Groq). Frames output as
 //  considerations — never a price prediction.
 //
 
@@ -59,30 +59,33 @@ final class StockAnalysisViewModel {
         "Summarise the latest earnings."
     ]
 
+    /// Which provider produced the latest reply.
+    var lastProvider: AIProvider?
+
     private let snapshot: StockSnapshot
     private let currency: DisplayCurrency
     private let finnhub: FinnhubService
-    private let anthropic: AnthropicService
+    private let ai: AIService
 
     init(snapshot: StockSnapshot, currency: DisplayCurrency,
-         finnhub: FinnhubService = .shared, anthropic: AnthropicService = .shared) {
+         finnhub: FinnhubService = .shared, ai: AIService = .shared) {
         self.snapshot = snapshot
         self.currency = currency
         self.finnhub = finnhub
-        self.anthropic = anthropic
+        self.ai = ai
+    }
+
+    var hasProvider: Bool {
+        KeychainService.shared.has(.gemini) || KeychainService.shared.has(.groq)
     }
 
     // MARK: Generation
 
     func generate() async {
         guard messages.isEmpty else { return }
-        guard KeychainService.shared.has(.anthropic) else {
-            toast = Toast(message: "Add an Anthropic API key in Settings to analyse this stock.", kind: .info)
-            messages = [ChatMessage(role: .assistant, text: Self.fallback(snapshot))]
-            return
-        }
 
-        // Pull structured grounding from Finnhub concurrently (best-effort).
+        // Pull structured grounding from Finnhub (recent news + analyst
+        // consensus) regardless of whether a provider key is set.
         if KeychainService.shared.has(.finnhub) {
             async let news = try? await finnhub.companyNews(for: snapshot.ticker, days: 14)
             async let rec = try? await finnhub.recommendation(for: snapshot.ticker)
@@ -90,8 +93,11 @@ final class StockAnalysisViewModel {
             consensus = await rec
         }
 
+        // With a provider key, analyse automatically; otherwise the view shows
+        // a hint to add a Gemini/Groq key in Settings.
+        guard hasProvider else { return }
         await exchange(
-            userText: "Give me a decision-support analysis of this position.",
+            userText: "Give me a decision-support analysis of this stock using the data and news provided.",
             showUserMessage: false
         )
     }
@@ -113,14 +119,12 @@ final class StockAnalysisViewModel {
         if !showUserMessage { apiMessages.append(ChatMessage(role: .user, text: userText)) }
 
         do {
-            let reply = try await anthropic.send(messages: apiMessages,
-                                                 systemPrompt: systemPrompt,
-                                                 enableWebSearch: true)
-            messages.append(ChatMessage(role: .assistant, text: reply))
+            let result = try await ai.chat(system: systemPrompt, messages: apiMessages)
+            lastProvider = result.provider
+            messages.append(ChatMessage(role: .assistant, text: result.text))
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             toast = Toast(message: message, kind: .error)
-            if messages.isEmpty { messages = [ChatMessage(role: .assistant, text: Self.fallback(snapshot))] }
         }
     }
 
@@ -128,8 +132,8 @@ final class StockAnalysisViewModel {
 
     private var systemPrompt: String {
         var lines: [String] = []
-        lines.append("You are a sharp equity analyst inside an iPad investing app called Vault. You give decision-support analysis for a single stock the user already owns. You are NOT a fortune teller: never predict prices or give a guaranteed buy/sell signal. Instead synthesise recent facts into a balanced view and a reasoned lean.")
-        lines.append("Use the web_search tool to find the most recent news, earnings and analyst commentary before answering. Prefer information from the last few weeks.")
+        lines.append("You are a sharp equity analyst inside an iPad investing app called Vault. You give decision-support analysis for a single stock. You are NOT a fortune teller: never predict prices or give a guaranteed buy/sell signal. Instead synthesise the provided facts into a balanced view and a reasoned lean.")
+        lines.append("Use ONLY the data, analyst consensus and recent headlines provided below — do not invent figures or events.")
         lines.append("")
         lines.append("Respond in GitHub-flavoured markdown using EXACTLY these sections, each as a `## ` heading, in this order:")
         lines.append("## What's happening — 2-3 sentences on the latest material news/catalysts.")
@@ -156,28 +160,5 @@ final class StockAnalysisViewModel {
             }
         }
         return lines.joined(separator: "\n")
-    }
-
-    // MARK: Fallback
-
-    private static func fallback(_ s: StockSnapshot) -> String {
-        """
-        ## What's happening
-        Live analysis needs an Anthropic API key (and a Finnhub key for fresh news). Add them in Settings to get a news-driven read on \(s.ticker).
-
-        ## Bull case
-        Add your keys and Claude will search recent news and earnings to build this.
-
-        ## Bear case
-        Same — grounded in the latest headlines once keys are set.
-
-        ## What to watch
-        Upcoming earnings and sector catalysts.
-
-        ## Lean
-        **Hold** — no live data yet. You're \(Money.percent(s.returnPercent)) on this position at \(Int(s.shares)) shares.
-
-        *Not financial advice — your research and risk tolerance decide.*
-        """
     }
 }

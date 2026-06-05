@@ -2,8 +2,9 @@
 //  AIAnalysisViewModel.swift
 //  Vault
 //
-//  Builds a structured prompt from the user's portfolio, calls Claude for
-//  commentary, and maintains the follow-up conversation in the sheet.
+//  Compiles portfolio data + per-holding news, runs it through the AI provider
+//  chain (Gemini → Groq), and maintains the follow-up conversation. Also builds
+//  the self-contained prompt for the copy-paste flow.
 //
 
 import SwiftUI
@@ -25,6 +26,9 @@ final class AIAnalysisViewModel {
     var isLoading = false
     var toast: Toast?
     var generatedAt = Date()
+    /// Which provider produced the latest reply (for the header label).
+    var lastProvider: AIProvider?
+    private(set) var didPrepare = false
 
     let suggestions = [
         "How concentrated is my tech exposure really?",
@@ -33,103 +37,104 @@ final class AIAnalysisViewModel {
         "Is my portfolio beating the index after fees?"
     ]
 
-    private let anthropic: AnthropicService
-    private var systemPrompt = ""
+    private let ai: AIService
     private let currency: DisplayCurrency
+    private var digests: [HoldingDigest] = []
+    private var summaryData = PortfolioSummary()
+    private var systemPrompt = ""
+    private var contextLoaded = false
 
-    init(anthropic: AnthropicService = .shared, currency: DisplayCurrency = .gbp) {
-        self.anthropic = anthropic
+    init(ai: AIService = .shared, currency: DisplayCurrency = .gbp) {
+        self.ai = ai
         self.currency = currency
+    }
+
+    var hasProvider: Bool {
+        KeychainService.shared.has(.gemini) || KeychainService.shared.has(.groq)
     }
 
     // MARK: Setup
 
-    /// Compute factual metric cards and build the system prompt from holdings.
-    func prepare(holdings: [Holding], summary: PortfolioSummary) {
-        metrics = Self.computeMetrics(holdings: holdings, summary: summary, currency: currency)
-        systemPrompt = Self.buildSystemPrompt(holdings: holdings, summary: summary, currency: currency)
+    /// Compute factual metric cards from pre-built digests (sync, on main).
+    func prepare(digests: [HoldingDigest], summary: PortfolioSummary) {
+        self.digests = digests
+        summaryData = summary
+        metrics = Self.computeMetrics(digests: digests, summary: summary, currency: currency)
+        didPrepare = true
     }
 
-    /// Kick off the initial analysis (called when the sheet appears).
+    /// Fetch per-holding news and build the rich system prompt (once).
+    func loadContext() async {
+        guard !contextLoaded, !digests.isEmpty else { return }
+        let news = await AIContext.fetchNews(for: digests.map(\.ticker))
+        systemPrompt = AIContext.portfolioSystemPrompt(digests: digests, summary: summaryData, currency: currency, news: news)
+        contextLoaded = true
+    }
+
+    /// Kick off the initial analysis when the sheet appears. With a provider key
+    /// it runs automatically; otherwise the user uses the copy-paste bar.
     func generateInitialAnalysis() async {
         guard messages.isEmpty else { return }
         generatedAt = .now
-
-        guard KeychainService.shared.has(.anthropic) else {
-            // Offline / no-key fallback so the sheet is never empty.
-            messages = [ChatMessage(role: .assistant, text: Self.fallbackCommentary)]
-            toast = Toast(message: "Add an Anthropic API key in Settings for live analysis.", kind: .info)
-            return
-        }
-
-        await exchange(userText: "Analyse my portfolio. Give an overall commentary paragraph, a concentration risk assessment, the single top risk flag, and one actionable suggestion.",
-                       showUserMessage: false)
+        await loadContext()
+        guard hasProvider else { return }
+        await exchange(userText: "Analyse my portfolio using the data and news provided.", showUserMessage: false)
     }
 
-    /// Send a follow-up question.
     func ask(_ text: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         await exchange(userText: trimmed, showUserMessage: true)
     }
 
-    /// Generate a news-driven "today's brief" across the whole portfolio.
-    /// Only runs when the user explicitly taps it (web search → live news).
+    /// A news-driven "what moved" brief (only when the user taps it).
     func generateBrief() async {
         guard !isLoading else { return }
-        guard KeychainService.shared.has(.anthropic) else {
-            toast = Toast(message: "Add an Anthropic API key in Settings to generate a brief.", kind: .info)
+        await loadContext()
+        guard hasProvider else {
+            toast = Toast(message: "Add a Gemini or Groq API key in Settings to enable AI analysis.", kind: .info)
             return
         }
         await exchange(
-            userText: "Give me today's brief. Search the web for the latest news across my holdings, then summarise in plain prose: what moved and why over the last day or two, the single most important development for this portfolio, and one thing to watch today. Be concise.",
-            showUserMessage: true,
-            webSearch: true
+            userText: "Give me a brief: using the news provided, summarise what moved recently and why, the single most important development for this portfolio, and one thing to watch. Be concise.",
+            showUserMessage: true
         )
     }
 
     // MARK: Networking
 
-    private func exchange(userText: String, showUserMessage: Bool, webSearch: Bool = false) async {
-        if showUserMessage {
-            messages.append(ChatMessage(role: .user, text: userText))
-        }
+    private func exchange(userText: String, showUserMessage: Bool) async {
+        if showUserMessage { messages.append(ChatMessage(role: .user, text: userText)) }
         isLoading = true
         defer { isLoading = false }
 
-        // Build the message list sent to the API (always includes the user turn).
         var apiMessages = messages.filter { !($0.role == .assistant && $0.text.isEmpty) }
-        if !showUserMessage {
-            apiMessages.append(ChatMessage(role: .user, text: userText))
-        }
+        if !showUserMessage { apiMessages.append(ChatMessage(role: .user, text: userText)) }
 
         do {
-            let reply = try await anthropic.send(messages: apiMessages, systemPrompt: systemPrompt, enableWebSearch: webSearch)
-            messages.append(ChatMessage(role: .assistant, text: reply))
+            let result = try await ai.chat(system: systemPrompt, messages: apiMessages)
+            lastProvider = result.provider
+            messages.append(ChatMessage(role: .assistant, text: result.text))
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             toast = Toast(message: message, kind: .error)
-            if messages.isEmpty {
-                messages = [ChatMessage(role: .assistant, text: Self.fallbackCommentary)]
-            }
         }
     }
 
-    // MARK: Metric computation
+    // MARK: Metric computation (factual, on-device)
 
-    private static func computeMetrics(holdings: [Holding], summary: PortfolioSummary,
+    private static func computeMetrics(digests: [HoldingDigest], summary: PortfolioSummary,
                                        currency: DisplayCurrency) -> [AIMetric] {
-        guard !holdings.isEmpty, summary.currentValue > 0 else { return [] }
+        guard !digests.isEmpty, summary.currentValue > 0 else { return [] }
 
-        // Concentration: largest single sector weight.
         var sectorTotals: [String: Double] = [:]
-        for h in holdings { sectorTotals[h.sector, default: 0] += h.currentValue }
+        for d in digests { sectorTotals[d.sector, default: 0] += d.currentValue }
         let topSector = sectorTotals.max { $0.value < $1.value }
         let concentration = (topSector?.value ?? 0) / summary.currentValue * 100
 
-        let largest = holdings.max { $0.currentValue < $1.currentValue }
+        let largest = digests.max { $0.currentValue < $1.currentValue }
         let largestPct = (largest?.currentValue ?? 0) / summary.currentValue * 100
-        let sectorCount = Set(holdings.map(\.sector)).count
+        let sectorCount = Set(digests.map(\.sector)).count
 
         return [
             AIMetric(label: "Concentration",
@@ -145,45 +150,9 @@ final class AIAnalysisViewModel {
                      note: String(format: "%.0f%% of book", largestPct),
                      tone: .neutral),
             AIMetric(label: "Holdings",
-                     value: "\(holdings.count)",
+                     value: "\(digests.count)",
                      note: "across \(sectorCount) sector\(sectorCount == 1 ? "" : "s")",
                      tone: .neutral)
         ]
     }
-
-    // MARK: Prompt construction
-
-    private static func buildSystemPrompt(holdings: [Holding], summary: PortfolioSummary,
-                                          currency: DisplayCurrency) -> String {
-        var lines: [String] = []
-        lines.append("You are a concise, sharp portfolio analyst inside an iPad investing app called Vault.")
-        lines.append("The user holds the positions below. Currency is \(currency.rawValue). Be specific, reference real numbers, and never give boilerplate disclaimers beyond a brief one if essential.")
-        lines.append("Keep responses to a few short paragraphs of plain prose — no markdown headers, no bullet lists.")
-        lines.append("")
-        lines.append("PORTFOLIO SUMMARY:")
-        lines.append("- Total invested (cost basis incl. fees): \(Money.currency(summary.totalInvested, currency: currency))")
-        lines.append("- Current value: \(Money.currency(summary.currentValue, currency: currency))")
-        lines.append("- Profit/Loss: \(Money.signed(summary.profitLoss, currency: currency)) (\(Money.percent(summary.returnPercent)))")
-        lines.append("- Annualised return: \(Money.percent(summary.annualisedReturn))")
-        lines.append("")
-        lines.append("HOLDINGS:")
-        for h in holdings {
-            lines.append("- \(h.ticker) (\(h.companyName), \(h.sector)): \(Int(h.shares)) shares, cost basis \(Money.currency(h.costBasis, currency: currency)), value \(Money.currency(h.currentValue, currency: currency)), return \(Money.percent(h.returnPercent))")
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    // MARK: Fallback
-
-    static let fallbackCommentary = """
-    Your portfolio is in healthy shape — up against cost basis and comfortably ahead of a broad index over the same window.
-
-    The standout consideration is concentration. Technology dominates the book once you fold the large-cap names together, and an index position adds further large-cap tech exposure underneath. A tech drawdown would cost you proportionally more than a diversified investor.
-
-    Your highest-conviction winner is also one of your most volatile lines — worth deciding whether you'd trim into strength to lock gains, or let it run.
-
-    Net: a well-performing, tech-tilted portfolio. The single highest-leverage move would be adding a non-correlated sleeve — healthcare, energy, or international — to reduce concentration without sacrificing your growth posture.
-
-    (This is sample analysis. Add an Anthropic API key in Settings to generate live commentary from Claude.)
-    """
 }

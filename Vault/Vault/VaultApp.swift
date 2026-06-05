@@ -14,13 +14,13 @@ struct VaultApp: App {
 
     /// Shared SwiftData container for all models.
     let container: ModelContainer = {
-        let schema = Schema([Holding.self, PaperPosition.self, PaperTrade.self])
+        let schema = Schema([Holding.self, PaperPosition.self, PaperTrade.self, WatchItem.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
             // Fall back to in-memory so the app still launches if the store is corrupt.
-            let fallback = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            let fallback = ModelConfiguration(schema: Schema([Holding.self, PaperPosition.self, PaperTrade.self, WatchItem.self]), isStoredInMemoryOnly: true)
             // swiftlint:disable:next force_try
             return try! ModelContainer(for: schema, configurations: [fallback])
         }

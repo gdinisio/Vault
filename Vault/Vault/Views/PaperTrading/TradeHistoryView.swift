@@ -10,6 +10,17 @@ import SwiftUI
 struct TradeHistoryView: View {
     let trades: [PaperTrade]
     var currency: DisplayCurrency = .gbp
+    /// When false the rows lay out inline (no internal scroll / no greedy
+    /// height) so a parent ScrollView can own the scrolling — used in portrait.
+    var scrolls: Bool = true
+
+    private var rows: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(trades.enumerated()), id: \.element.id) { index, trade in
+                TradeRow(trade: trade, currency: currency, isLast: index == trades.count - 1)
+            }
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -22,21 +33,19 @@ struct TradeHistoryView: View {
                 Text("No trades yet. Place a paper order to get started.")
                     .font(.system(size: 14))
                     .foregroundStyle(Theme.inkDim)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(maxHeight: scrolls ? .infinity : nil, alignment: .topLeading)
+            } else if scrolls {
+                ScrollView { rows }
+                    .scrollIndicators(.hidden)
             } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(Array(trades.enumerated()), id: \.element.id) { index, trade in
-                            TradeRow(trade: trade, currency: currency, isLast: index == trades.count - 1)
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
+                rows
             }
         }
         .padding(.horizontal, 26)
         .padding(.vertical, 24)
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxHeight: scrolls ? .infinity : nil, alignment: .top)
         .glassCard()
     }
 }

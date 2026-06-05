@@ -49,13 +49,10 @@ struct HoldingRowView: View {
             }
             .frame(width: 96, alignment: .leading)
 
-            // sparkline
-            SparklineView(
-                points: Spark.series(seed: holding.purchasePricePerShare, count: 22, trendingUp: up),
-                color: up ? Theme.gain : Theme.loss
-            )
-            .frame(maxWidth: .infinity)
-            .frame(height: 34)
+            // real price sparkline
+            TickerSparkline(symbol: holding.ticker, fallbackUp: up)
+                .frame(maxWidth: .infinity)
+                .frame(height: 34)
 
             // value + P&L
             VStack(alignment: .trailing, spacing: 2) {

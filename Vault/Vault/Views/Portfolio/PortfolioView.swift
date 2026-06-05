@@ -19,7 +19,6 @@ struct PortfolioView: View {
 
     @State private var showAddSheet = false
     @State private var selectedHolding: Holding?
-    @State private var range = "1M"
 
     private var sortedHoldings: [Holding] {
         holdings.sorted { $0.currentValue > $1.currentValue }
@@ -32,20 +31,23 @@ struct PortfolioView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            if holdings.isEmpty {
-                emptyState
-            } else {
-                heroBand
-                    .padding(.top, 26)
-                    .padding(.bottom, 22)
-                columns
+        GeometryReader { geo in
+            let portrait = geo.size.height > geo.size.width
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                if holdings.isEmpty {
+                    emptyState
+                } else {
+                    heroBand(portrait: portrait)
+                        .padding(.top, portrait ? 18 : 26)
+                        .padding(.bottom, portrait ? 16 : 22)
+                    content(portrait: portrait)
+                }
             }
+            .padding(.horizontal, portrait ? 28 : 52)
+            .padding(.top, portrait ? 28 : 38)
+            .padding(.bottom, 24)
         }
-        .padding(.horizontal, 52)
-        .padding(.top, 38)
-        .padding(.bottom, 24)
         .toast($viewModel.toast)
         .sheet(isPresented: $showAddSheet) {
             AddHoldingView(currency: currency) { holding in
@@ -105,86 +107,113 @@ struct PortfolioView: View {
 
     // MARK: Hero
 
-    private var heroBand: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Total portfolio value").vaultLabel().padding(.bottom, 10)
-                Text(Money.currency(summary.currentValue, currency: currency))
-                    .font(.system(size: 76, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Theme.ink)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                HStack(spacing: 18) {
-                    HStack(spacing: 7) {
-                        Image(systemName: summary.profitLoss >= 0 ? "arrow.up" : "arrow.down")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Theme.tone(summary.profitLoss))
-                            .frame(width: 26, height: 26)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(Theme.tone(summary.profitLoss).opacity(0.18)))
-                        Text(Money.signed(summary.profitLoss, currency: currency))
-                            .font(.system(size: 21, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(Theme.tone(summary.profitLoss))
-                        Text(Money.percent(summary.returnPercent))
-                            .font(.system(size: 21, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(Theme.tone(summary.profitLoss))
-                    }
-                    Text("Annualised \(Money.percent(summary.annualisedReturn))")
-                        .font(.system(size: 15, design: .monospaced))
-                        .foregroundStyle(Theme.inkDim)
+    @ViewBuilder
+    private func heroBand(portrait: Bool) -> some View {
+        let figures = VStack(alignment: .leading, spacing: 0) {
+            Text("Total portfolio value").vaultLabel().padding(.bottom, 10)
+            Text(Money.currency(summary.currentValue, currency: currency))
+                .font(.system(size: portrait ? 56 : 76, weight: .semibold, design: .monospaced))
+                .foregroundStyle(Theme.ink)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            HStack(spacing: 18) {
+                HStack(spacing: 7) {
+                    Image(systemName: summary.profitLoss >= 0 ? "arrow.up" : "arrow.down")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.tone(summary.profitLoss))
+                        .frame(width: 26, height: 26)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.tone(summary.profitLoss).opacity(0.18)))
+                    Text(Money.signed(summary.profitLoss, currency: currency))
+                        .font(.system(size: 21, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Theme.tone(summary.profitLoss))
+                    Text(Money.percent(summary.returnPercent))
+                        .font(.system(size: 21, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Theme.tone(summary.profitLoss))
                 }
-                .padding(.top, 14)
+                Text("Annualised \(Money.percent(summary.annualisedReturn))")
+                    .font(.system(size: 15, design: .monospaced))
+                    .foregroundStyle(Theme.inkDim)
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 14) {
-                RangeChips(value: $range)
-                SparklineView(
-                    points: Spark.series(seed: 7.3, count: 60, trendingUp: summary.profitLoss >= 0),
-                    color: Theme.tone(summary.profitLoss)
-                )
-                .frame(width: 360, height: 96)
+            .padding(.top, 14)
+        }
+        let chart = PortfolioPerformanceChart(
+            holdings: holdings,
+            currency: currency,
+            viewModel: viewModel,
+            fallbackUp: summary.profitLoss >= 0
+        )
+
+        if portrait {
+            VStack(alignment: .leading, spacing: 18) {
+                figures
+                chart.frame(maxWidth: .infinity)
+            }
+        } else {
+            HStack(alignment: .bottom) {
+                figures
+                Spacer()
+                chart.frame(width: 380)
             }
         }
     }
 
-    // MARK: Columns
+    // MARK: Content (orientation-adaptive)
 
-    private var columns: some View {
-        HStack(alignment: .top, spacing: 22) {
-            AllocationCardView(slices: viewModel.allocations(for: holdings), currency: currency)
-                .frame(width: 408)
-
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Holdings").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
-                    Spacer()
-                    Text("\(holdings.count) positions").font(.system(size: 14, design: .monospaced)).foregroundStyle(Theme.inkDim)
+    /// Landscape: allocation + holdings side by side. Portrait: holdings first
+    /// (so they're always visible), allocation below.
+    @ViewBuilder
+    private func content(portrait: Bool) -> some View {
+        Group {
+            if portrait {
+                VStack(alignment: .leading, spacing: 22) {
+                    holdingsColumn
+                    AllocationCardView(slices: viewModel.allocations(for: holdings), currency: currency)
+                        .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 4).padding(.bottom, 14)
-
-                List {
-                    ForEach(sortedHoldings) { holding in
-                        HoldingRowView(holding: holding, currency: currency)
-                            .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .contentShape(Rectangle())
-                            .onTapGesture { selectedHolding = holding }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    Haptics.impact(.rigid)
-                                    viewModel.delete(holding, in: context)
-                                } label: { Label("Delete", systemImage: "trash") }
-                            }
-                    }
+            } else {
+                HStack(alignment: .top, spacing: 22) {
+                    AllocationCardView(slices: viewModel.allocations(for: holdings), currency: currency)
+                        .frame(width: 408)
+                    holdingsColumn
+                        .frame(maxWidth: .infinity)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .scrollIndicators(.hidden)
-                .refreshable { await viewModel.refreshPrices(for: holdings) }
             }
-            .frame(maxWidth: .infinity)
         }
         .frame(maxHeight: .infinity)
+        // Rebuild when the live FX rate lands so rows + allocation use it too.
+        .id(settings.fxToken)
+    }
+
+    private var holdingsColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Holdings").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+                Spacer()
+                Text("\(holdings.count) positions").font(.system(size: 14, design: .monospaced)).foregroundStyle(Theme.inkDim)
+            }
+            .padding(.horizontal, 4).padding(.bottom, 14)
+
+            List {
+                ForEach(sortedHoldings) { holding in
+                    HoldingRowView(holding: holding, currency: currency)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .contentShape(Rectangle())
+                        .onTapGesture { selectedHolding = holding }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                Haptics.impact(.rigid)
+                                viewModel.delete(holding, in: context)
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollIndicators(.hidden)
+            .refreshable { await viewModel.refreshPrices(for: holdings) }
+        }
     }
 
     // MARK: Empty state

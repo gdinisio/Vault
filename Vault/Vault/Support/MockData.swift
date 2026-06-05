@@ -55,10 +55,16 @@ enum MockData {
         PaperTrade(ticker: "SOFI", shares: 200, price: 9.85, type: .sell, timestamp: dateTime("2026-05-12 13:55"))
     ]
 
+    static let watchlist: [WatchItem] = [
+        WatchItem(ticker: "GOOGL", companyName: "Alphabet Inc.", sector: "Technology"),
+        WatchItem(ticker: "LLY", companyName: "Eli Lilly & Co.", sector: "Healthcare"),
+        WatchItem(ticker: "JPM", companyName: "JPMorgan Chase", sector: "Financials")
+    ]
+
     /// An in-memory SwiftData container seeded with mock data, for previews.
     @MainActor
     static func previewContainer() -> ModelContainer {
-        let schema = Schema([Holding.self, PaperPosition.self, PaperTrade.self])
+        let schema = Schema([Holding.self, PaperPosition.self, PaperTrade.self, WatchItem.self])
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         // swiftlint:disable:next force_try
         let container = try! ModelContainer(for: schema, configurations: [config])
@@ -66,6 +72,7 @@ enum MockData {
         holdings.forEach { context.insert($0) }
         positions.forEach { context.insert($0) }
         trades.forEach { context.insert($0) }
+        watchlist.forEach { context.insert($0) }
         return container
     }
 
