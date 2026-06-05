@@ -16,6 +16,7 @@ struct ContentView: View {
     @Environment(AppSettings.self) private var settings
     @Query private var holdings: [Holding]
     @Query private var positions: [PaperPosition]
+    @Query private var watch: [WatchItem]
 
     @State private var portfolioVM = PortfolioViewModel()
     @State private var paperVM = PaperTradingViewModel()
@@ -65,6 +66,13 @@ struct ContentView: View {
             )
         }
         .task { await refreshFXRates() }
+        // Rebuild widget snapshot on launch and whenever data/FX changes.
+        .onChange(of: holdings.count) { _, _ in rebuildWidgetSnapshot() }
+        .onChange(of: positions.count) { _, _ in rebuildWidgetSnapshot() }
+        .onChange(of: watch.count) { _, _ in rebuildWidgetSnapshot() }
+        .onChange(of: settings.fxToken) { _, _ in rebuildWidgetSnapshot() }
+        // Deep-link routing: widgets open vault://portfolio|paper|watchlist|ticker/SYM
+        .onOpenURL { url in handleDeepLink(url) }
     }
 
     /// Fetch live FX rates so display-currency values are accurate.
@@ -74,6 +82,32 @@ struct ContentView: View {
                 for (currency, rate) in rates { Money.rates[currency] = rate }
                 settings.fxToken &+= 1   // nudge dependent views to recompute
             }
+        }
+        // Rebuild snapshot after FX lands (fxToken change also triggers onChange,
+        // but we do it here too so the very first launch gets a snapshot).
+        rebuildWidgetSnapshot()
+    }
+
+    private func rebuildWidgetSnapshot() {
+        Task {
+            await WidgetSnapshotWriter.shared.rebuild(
+                holdings: holdings,
+                positions: positions,
+                watch: watch,
+                currency: settings.displayCurrency
+            )
+        }
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "vault" else { return }
+        switch url.host {
+        case "portfolio":  selection = .portfolio
+        case "paper":      selection = .paper
+        case "watchlist":  selection = .watchlist
+        case "settings":   selection = .settings
+        case "ticker":     selection = .portfolio   // opens portfolio; detail tap is future work
+        default:           break
         }
     }
 

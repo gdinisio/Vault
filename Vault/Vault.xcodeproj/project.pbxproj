@@ -7,23 +7,96 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		164F4F182FD2CEB30023AFC8 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 164F4F172FD2CEB30023AFC8 /* WidgetKit.framework */; };
+		164F4F1A2FD2CEB30023AFC8 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 164F4F192FD2CEB30023AFC8 /* SwiftUI.framework */; };
+		164F4F292FD2CEB30023AFC8 /* VaultWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 164F4F152FD2CEB30023AFC8 /* VaultWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		168FC3B92FD18EBB00BCD284 /* Vault_icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 168FC3B82FD18EBB00BCD284 /* Vault_icon.icon */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		164F4F272FD2CEB30023AFC8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 168CF3502FD06D9B00A808B8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 164F4F142FD2CEB30023AFC8;
+			remoteInfo = VaultWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		164F4F2A2FD2CEB30023AFC8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				164F4F292FD2CEB30023AFC8 /* VaultWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		164F4F152FD2CEB30023AFC8 /* VaultWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VaultWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		164F4F172FD2CEB30023AFC8 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		164F4F192FD2CEB30023AFC8 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		164F4F3D2FD2CF790023AFC8 /* VaultWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VaultWidgetsExtension.entitlements; sourceTree = "<group>"; };
 		168CF3582FD06D9B00A808B8 /* Vault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Vault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		168FC3B82FD18EBB00BCD284 /* Vault_icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Vault_icon.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		164F4F2D2FD2CEB30023AFC8 /* Exceptions for "VaultWidgets" folder in "VaultWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 164F4F142FD2CEB30023AFC8 /* VaultWidgetsExtension */;
+		};
+		164F4F402FD2D0220023AFC8 /* Exceptions for "Vault" folder in "VaultWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Components/SparklineView.swift,
+				DesignSystem/Theme.swift,
+				Shared/AppGroup.swift,
+				Shared/SnapshotStore.swift,
+				Shared/WidgetSnapshot.swift,
+				Support/Formatters.swift,
+			);
+			target = 164F4F142FD2CEB30023AFC8 /* VaultWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		164F4F1B2FD2CEB30023AFC8 /* VaultWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				164F4F2D2FD2CEB30023AFC8 /* Exceptions for "VaultWidgets" folder in "VaultWidgetsExtension" target */,
+			);
+			path = VaultWidgets;
+			sourceTree = "<group>";
+		};
 		168CF35A2FD06D9B00A808B8 /* Vault */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				164F4F402FD2D0220023AFC8 /* Exceptions for "Vault" folder in "VaultWidgetsExtension" target */,
+			);
 			path = Vault;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		164F4F122FD2CEB30023AFC8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				164F4F1A2FD2CEB30023AFC8 /* SwiftUI.framework in Frameworks */,
+				164F4F182FD2CEB30023AFC8 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		168CF3552FD06D9B00A808B8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -34,11 +107,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		164F4F162FD2CEB30023AFC8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				164F4F172FD2CEB30023AFC8 /* WidgetKit.framework */,
+				164F4F192FD2CEB30023AFC8 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		168CF34F2FD06D9B00A808B8 = {
 			isa = PBXGroup;
 			children = (
+				164F4F3D2FD2CF790023AFC8 /* VaultWidgetsExtension.entitlements */,
 				168FC3B82FD18EBB00BCD284 /* Vault_icon.icon */,
 				168CF35A2FD06D9B00A808B8 /* Vault */,
+				164F4F1B2FD2CEB30023AFC8 /* VaultWidgets */,
+				164F4F162FD2CEB30023AFC8 /* Frameworks */,
 				168CF3592FD06D9B00A808B8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				168CF3582FD06D9B00A808B8 /* Vault.app */,
+				164F4F152FD2CEB30023AFC8 /* VaultWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -54,6 +140,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		164F4F142FD2CEB30023AFC8 /* VaultWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 164F4F2E2FD2CEB30023AFC8 /* Build configuration list for PBXNativeTarget "VaultWidgetsExtension" */;
+			buildPhases = (
+				164F4F112FD2CEB30023AFC8 /* Sources */,
+				164F4F122FD2CEB30023AFC8 /* Frameworks */,
+				164F4F132FD2CEB30023AFC8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				164F4F1B2FD2CEB30023AFC8 /* VaultWidgets */,
+			);
+			name = VaultWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = VaultWidgetsExtension;
+			productReference = 164F4F152FD2CEB30023AFC8 /* VaultWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		168CF3572FD06D9B00A808B8 /* Vault */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 168CF3632FD06D9D00A808B8 /* Build configuration list for PBXNativeTarget "Vault" */;
@@ -61,10 +169,12 @@
 				168CF3542FD06D9B00A808B8 /* Sources */,
 				168CF3552FD06D9B00A808B8 /* Frameworks */,
 				168CF3562FD06D9B00A808B8 /* Resources */,
+				164F4F2A2FD2CEB30023AFC8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				164F4F282FD2CEB30023AFC8 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				168CF35A2FD06D9B00A808B8 /* Vault */,
@@ -86,6 +196,9 @@
 				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					164F4F142FD2CEB30023AFC8 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 					168CF3572FD06D9B00A808B8 = {
 						CreatedOnToolsVersion = 26.5;
 					};
@@ -106,11 +219,19 @@
 			projectRoot = "";
 			targets = (
 				168CF3572FD06D9B00A808B8 /* Vault */,
+				164F4F142FD2CEB30023AFC8 /* VaultWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		164F4F132FD2CEB30023AFC8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		168CF3562FD06D9B00A808B8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -122,6 +243,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		164F4F112FD2CEB30023AFC8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		168CF3542FD06D9B00A808B8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -131,7 +259,77 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		164F4F282FD2CEB30023AFC8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 164F4F142FD2CEB30023AFC8 /* VaultWidgetsExtension */;
+			targetProxy = 164F4F272FD2CEB30023AFC8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		164F4F2B2FD2CEB30023AFC8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = VaultWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U6L4V6TR36;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VaultWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VaultWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gdinisio.Vault.VaultWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		164F4F2C2FD2CEB30023AFC8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = VaultWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U6L4V6TR36;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VaultWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VaultWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gdinisio.Vault.VaultWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		168CF3612FD06D9D00A808B8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -258,6 +456,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Vault_icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Vault/Vault.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = U6L4V6TR36;
@@ -291,6 +490,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Vault_icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Vault/Vault.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = U6L4V6TR36;
@@ -322,6 +522,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		164F4F2E2FD2CEB30023AFC8 /* Build configuration list for PBXNativeTarget "VaultWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				164F4F2B2FD2CEB30023AFC8 /* Debug */,
+				164F4F2C2FD2CEB30023AFC8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		168CF3532FD06D9B00A808B8 /* Build configuration list for PBXProject "Vault" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
