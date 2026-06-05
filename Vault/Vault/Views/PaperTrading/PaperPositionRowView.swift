@@ -39,7 +39,7 @@ struct PaperPositionRowView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
-        .glassCard(cornerRadius: 22)
+        .contentCard(cornerRadius: 22)
     }
 }
 

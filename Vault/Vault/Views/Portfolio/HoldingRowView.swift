@@ -67,7 +67,7 @@ struct HoldingRowView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 15)
-        .glassCard(cornerRadius: 22)
+        .contentCard(cornerRadius: 22)
     }
 }
 

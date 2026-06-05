@@ -28,15 +28,26 @@ struct AIAnalysisView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            metrics
-            conversation
-            askBar
+        NavigationStack {
+            VStack(spacing: 0) {
+                metrics
+                conversation
+                askBar
+            }
+            .frame(maxWidth: 1040)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle(title)
+            .navigationSubtitle(providerLine)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "checkmark")
+                    }
+                }
+            }
+            .toast($viewModel.toast)
         }
-        .frame(maxWidth: 1040)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .toast($viewModel.toast)
         .presentationBackground(.ultraThinMaterial)
         .presentationCornerRadius(Theme.sheetRadius)
         .task {
@@ -45,31 +56,8 @@ struct AIAnalysisView: View {
         }
     }
 
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 22))
-                .foregroundStyle(Theme.aiPurple)
-                .frame(width: 46, height: 46)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Theme.aiPurple.opacity(0.18))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.aiPurple.opacity(0.35), lineWidth: 1))
-                )
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
-                Text("\(viewModel.lastProvider.map { "via \($0.rawValue)" } ?? "AI analysis") · \(viewModel.generatedAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()))")
-                    .font(.system(size: 13)).foregroundStyle(Theme.inkDim)
-            }
-            Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                    .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
-            }.buttonStyle(.plain)
-        }
-        .padding(.horizontal, 34).padding(.top, 26).padding(.bottom, 18)
+    private var providerLine: String {
+        "\(viewModel.lastProvider.map { "via \($0.rawValue)" } ?? "AI analysis") · \(viewModel.generatedAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()))"
     }
 
     // MARK: Metrics
@@ -90,10 +78,10 @@ struct AIAnalysisView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 18).padding(.vertical, 16)
-                .glassPillCard()
+                .contentCard()
             }
         }
-        .padding(.horizontal, 34).padding(.bottom, 8)
+        .padding(.horizontal, 34).padding(.top, 8).padding(.bottom, 8)
     }
 
     private func tone(_ tone: AIMetric.Tone) -> Color {
@@ -189,7 +177,7 @@ struct AIAnalysisView: View {
             }
             .scrollIndicators(.hidden)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 TextField("Ask AI about your portfolio…", text: $draft)
                     .textFieldStyle(.plain)
                     .font(.system(size: 16.5))
@@ -200,17 +188,14 @@ struct AIAnalysisView: View {
                 Button { send(draft) } label: {
                     Image(systemName: "paperplane.fill")
                         .font(.system(size: 17))
-                        .foregroundStyle(Theme.onButton)
-                        .frame(width: 46, height: 46)
-                        .background(Circle().fill(LinearGradient(colors: [Theme.aiPurpleButton, Theme.aiPurpleButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                        .frame(width: 38, height: 38)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassProminent)
+                .tint(Theme.aiPurpleButton)
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading)
-                .opacity(draft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
-                .padding(4)
+                .padding(5)
             }
-            .padding(4)
-            .glassPill()
+            .glassEffect(.regular, in: .capsule)
             .padding(.horizontal, 34)
         }
         .padding(.bottom, 28)
@@ -263,19 +248,6 @@ private struct MessageBubble: View {
         // Convert markdown **bold** to attributed runs.
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(text)
-    }
-}
-
-// MARK: - Glass helpers
-
-private extension View {
-    func glassPillCard() -> some View {
-        background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.line.opacity(0.12), lineWidth: 0.5))
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 

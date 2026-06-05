@@ -18,7 +18,6 @@ struct PaperTradingView: View {
 
     @Bindable var viewModel: PaperTradingViewModel
     var onOpenAI: () -> Void
-    var onOpenSettings: () -> Void
 
     @State private var showBuy = false
     @State private var showSell = false
@@ -37,16 +36,17 @@ struct PaperTradingView: View {
         GeometryReader { geo in
             let portrait = geo.size.height > geo.size.width
             VStack(alignment: .leading, spacing: 0) {
-                header(portrait: portrait)
                 equityBand(portrait: portrait)
-                    .padding(.top, portrait ? 18 : 28)
+                    .padding(.top, portrait ? 6 : 10)
                     .padding(.bottom, portrait ? 16 : 22)
                 content(portrait: portrait)
             }
             .padding(.horizontal, portrait ? 28 : 52)
-            .padding(.top, portrait ? 28 : 38)
+            .padding(.top, portrait ? 12 : 16)
             .padding(.bottom, 24)
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent }
         .id(settings.fxToken)   // rebuild when live FX rate lands
         .toast($viewModel.toast)
         .sheet(isPresented: $showBuy) {
@@ -66,76 +66,39 @@ struct PaperTradingView: View {
         .task { await viewModel.refreshPrices(for: positions) }
     }
 
-    // MARK: Header
+    // MARK: Toolbar
 
-    @ViewBuilder
-    private func header(portrait: Bool) -> some View {
-        let titleBlock = VStack(alignment: .leading, spacing: 4) {
-            Text("Paper Trading").font(.system(size: 28, weight: .semibold)).foregroundStyle(Theme.ink)
-            Text("Practice with virtual money · no real funds at risk")
-                .font(.system(size: 14)).foregroundStyle(Theme.inkDim)
-                .lineLimit(1).minimumScaleFactor(0.8)
-        }
-
-        if portrait {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top) {
-                    titleBlock
-                    Spacer()
-                    iconButtons
-                }
-                cashBuyCard.frame(maxWidth: .infinity)
-            }
-        } else {
-            HStack(alignment: .top) {
-                titleBlock
-                Spacer()
-                HStack(spacing: 12) {
-                    iconButtons
-                    cashBuyCard
-                }
-            }
-        }
-    }
-
-    private var iconButtons: some View {
-        HStack(spacing: 12) {
-            HeaderButton(systemImage: "arrow.clockwise", isBusy: viewModel.isRefreshing) {
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        // Leading: utility (refresh) — plain glass.
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
                 Task { await viewModel.refreshPrices(for: positions) }
+            } label: {
+                if viewModel.isRefreshing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                }
             }
-            HeaderButton(systemImage: "gearshape", action: onOpenSettings)
+            .disabled(viewModel.isRefreshing)
+        }
+        // Trailing: primary tools (AI + Buy) — prominent, each its own capsule.
+        ToolbarItem(placement: .topBarTrailing) {
             Button(action: onOpenAI) {
-                HStack(spacing: 9) {
-                    Image(systemName: "sparkles").foregroundStyle(Theme.aiPurple)
-                    Text("AI Analysis").font(.system(size: 15.5, weight: .semibold)).foregroundStyle(Theme.ink)
-                }
-                .padding(.horizontal, 20).padding(.vertical, 12).glassPill()
-            }.buttonStyle(.plain)
-        }
-    }
-
-    private var cashBuyCard: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Virtual cash").vaultLabel()
-                Text(Money.currency0(viewModel.cash, currency: currency))
-                    .font(.system(size: 23, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1).minimumScaleFactor(0.6)
+                Image(systemName: "sparkles")
             }
-            Spacer(minLength: 0)
-            Button { showBuy = true } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus").font(.system(size: 16, weight: .bold))
-                    Text("Buy").font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundStyle(Theme.onButton)
-                .padding(.horizontal, 24).padding(.vertical, 13)
-                .background(Capsule().fill(LinearGradient(colors: [Theme.gainButton, Theme.gainButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)))
-            }.buttonStyle(.plain)
+            .buttonStyle(.glassProminent)
+            .tint(Theme.aiPurpleButton)
         }
-        .padding(.leading, 22).padding(.trailing, 13).padding(.vertical, 13)
-        .glassCard(cornerRadius: 999)
+        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { showBuy = true } label: {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(.glassProminent)
+            .tint(Theme.gainButton)
+        }
     }
 
     // MARK: Equity band
@@ -159,11 +122,30 @@ struct PaperTradingView: View {
                 .font(.system(size: 17, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Theme.tone(summary.openProfitLoss))
         }
+        let cash = VStack(alignment: .leading, spacing: 4) {
+            Text("Virtual cash").vaultLabel()
+            Text(Money.currency0(viewModel.cash, currency: currency))
+                .font(.system(size: 30, weight: .semibold, design: .monospaced))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1).minimumScaleFactor(0.6)
+        }
 
-        HStack(alignment: .bottom, spacing: 44) {
-            equity
-            pl.padding(.bottom, 8)
-            Spacer()
+        if portrait {
+            VStack(alignment: .leading, spacing: 18) {
+                equity
+                HStack(alignment: .bottom, spacing: 44) {
+                    pl
+                    cash
+                    Spacer()
+                }
+            }
+        } else {
+            HStack(alignment: .bottom, spacing: 44) {
+                equity
+                pl.padding(.bottom, 8)
+                cash.padding(.bottom, 8)
+                Spacer()
+            }
         }
     }
 
@@ -255,7 +237,7 @@ struct PaperTradingView: View {
         }
         .padding(.horizontal, 26).padding(.vertical, 22)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .glassCard()
+        .contentCard()
     }
 
     private var emptyPositions: some View {
@@ -265,14 +247,14 @@ struct PaperTradingView: View {
             Text("Tap Buy to place your first paper order.").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
-        .glassCard(cornerRadius: 22)
+        .contentCard(cornerRadius: 22)
     }
 }
 
 #Preview(traits: .landscapeLeft) {
     ZStack {
         VaultBackground(performance: 0.4)
-        PaperTradingView(viewModel: PaperTradingViewModel(), onOpenAI: {}, onOpenSettings: {})
+        PaperTradingView(viewModel: PaperTradingViewModel(), onOpenAI: {})
             .environment(AppSettings())
     }
     .modelContainer(MockData.previewContainer())

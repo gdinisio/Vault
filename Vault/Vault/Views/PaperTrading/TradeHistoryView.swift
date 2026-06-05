@@ -46,7 +46,7 @@ struct TradeHistoryView: View {
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(maxHeight: scrolls ? .infinity : nil, alignment: .top)
-        .glassCard()
+        .contentCard()
     }
 }
 

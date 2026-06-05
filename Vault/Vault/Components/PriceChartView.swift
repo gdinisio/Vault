@@ -48,7 +48,7 @@ struct PriceChartView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
+        .contentCard()
         .task(id: range) { await load() }
     }
 

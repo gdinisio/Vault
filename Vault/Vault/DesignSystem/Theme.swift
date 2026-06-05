@@ -58,6 +58,19 @@ enum Theme {
     /// Soft drop shadow under glass cards — deep in dark, gentle in light.
     static let cardShadow = dyn(dark: Color.black.opacity(0.45), light: Color.black.opacity(0.10))
 
+    // MARK: Matte content surfaces (flat — no material; glass is reserved for chrome)
+
+    /// Opaque, slightly-elevated fill for content cards/rows. Sits *flat* beneath
+    /// the floating Liquid Glass toolbars so the chrome reads as raised glass.
+    static let surface = dyn(dark: .oklch(0.225, 0.030, 264),
+                             light: .oklch(0.995, 0.004, 264))
+    /// Hairline border for matte content surfaces.
+    static let surfaceStroke = dyn(dark: Color.white.opacity(0.06),
+                                   light: Color.black.opacity(0.06))
+    /// Gentle ambient shadow under matte content (lighter than `cardShadow`).
+    static let surfaceShadow = dyn(dark: Color.black.opacity(0.30),
+                                   light: Color.black.opacity(0.06))
+
     // MARK: Sector accent hues (OKLCH hue angle → Color)
 
     static func sectorColor(_ sector: String) -> Color {
@@ -80,6 +93,7 @@ enum Theme {
     // MARK: Corner radii
 
     static let cardRadius: CGFloat = 20
+    static let contentRadius: CGFloat = 20
     static let sheetRadius: CGFloat = 28
 
     // MARK: Helpers

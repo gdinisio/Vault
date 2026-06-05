@@ -25,41 +25,30 @@ struct StockAnalysisView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            positionStrip
-            content
-            askBar
+        NavigationStack {
+            VStack(spacing: 0) {
+                positionStrip
+                content
+                askBar
+            }
+            .frame(maxWidth: 920)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle(snapshot.ticker)
+            .navigationSubtitle("Decision support · \(snapshot.companyName)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "checkmark")
+                    }
+                }
+            }
+            .toast($viewModel.toast)
         }
-        .frame(maxWidth: 920)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .toast($viewModel.toast)
         .presentationBackground(.ultraThickMaterial)
         .presentationCornerRadius(Theme.sheetRadius)
         .presentationDetents([.large])
         .task { await viewModel.generate() }
-    }
-
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 14) {
-            TickerMark(ticker: snapshot.ticker, sector: snapshot.sector, size: 46)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(snapshot.ticker).font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
-                    Image(systemName: "sparkles").font(.system(size: 14)).foregroundStyle(Theme.aiPurple)
-                }
-                Text("Decision support · \(snapshot.companyName)")
-                    .font(.system(size: 13)).foregroundStyle(Theme.inkDim).lineLimit(1)
-            }
-            Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                    .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
-            }.buttonStyle(.plain)
-        }
-        .padding(.horizontal, 30).padding(.top, 24).padding(.bottom, 16)
     }
 
     // MARK: Position + consensus strip
@@ -82,7 +71,7 @@ struct StockAnalysisView: View {
                 infoChip(label: "Live news", value: "On", note: "from recent headlines", tint: Theme.aiPurple)
             }
         }
-        .padding(.horizontal, 30).padding(.bottom, 6)
+        .padding(.horizontal, 30).padding(.top, 8).padding(.bottom, 6)
     }
 
     private func infoChip(label: String, value: String, note: String, tint: Color = Theme.ink) -> some View {
@@ -93,12 +82,7 @@ struct StockAnalysisView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16).padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line.opacity(0.12), lineWidth: 0.5))
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .contentCard(cornerRadius: 18)
     }
 
     private func consensusTint(_ c: RecommendationTrend) -> Color {
@@ -194,21 +178,22 @@ struct StockAnalysisView: View {
             }
             .scrollIndicators(.hidden)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 TextField("Ask AI about \(snapshot.ticker)…", text: $draft)
                     .textFieldStyle(.plain).font(.system(size: 16.5)).foregroundStyle(Theme.ink)
                     .focused($inputFocused).onSubmit { send(draft) }.padding(.leading, 22)
                 Button { send(draft) } label: {
-                    Image(systemName: "paperplane.fill").font(.system(size: 17))
-                        .foregroundStyle(Theme.onButton)
-                        .frame(width: 46, height: 46)
-                        .background(Circle().fill(LinearGradient(colors: [Theme.aiPurpleButton, Theme.aiPurpleButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 17))
+                        .frame(width: 38, height: 38)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassProminent)
+                .tint(Theme.aiPurpleButton)
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading)
-                .opacity(draft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1).padding(4)
+                .padding(5)
             }
-            .padding(4).glassPill().padding(.horizontal, 30)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.horizontal, 30)
         }
         .padding(.bottom, 24)
     }

@@ -13,8 +13,6 @@ struct WatchlistView: View {
     @Environment(AppSettings.self) private var settings
     @Query(sort: \WatchItem.addedDate, order: .reverse) private var items: [WatchItem]
 
-    var onOpenSettings: () -> Void
-
     @State private var showAdd = false
     @State private var selected: WatchItem?
 
@@ -25,7 +23,6 @@ struct WatchlistView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
             if items.isEmpty {
                 emptyState
             } else {
@@ -33,9 +30,11 @@ struct WatchlistView: View {
             }
         }
         .padding(.horizontal, 52)
-        .padding(.top, 38)
+        .padding(.top, 16)
         .padding(.bottom, 24)
         .id(settings.fxToken)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent }
         .sheet(isPresented: $showAdd) {
             AddWatchView(existing: items.map(\.ticker)) { item in
                 context.insert(item)
@@ -47,25 +46,14 @@ struct WatchlistView: View {
         }
     }
 
-    private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Watchlist").font(.system(size: 28, weight: .semibold)).foregroundStyle(Theme.ink)
-                Text("Tickers you're tracking · \(currency.rawValue)").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { showAdd = true } label: {
+                Image(systemName: "plus")
             }
-            Spacer()
-            HStack(spacing: 12) {
-                HeaderButton(systemImage: "gearshape", action: onOpenSettings)
-                Button { showAdd = true } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus").font(.system(size: 16, weight: .bold))
-                        Text("Add ticker").font(.system(size: 15.5, weight: .semibold))
-                    }
-                    .foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 22).padding(.vertical, 12)
-                    .background(Capsule().fill(Theme.line.opacity(0.10)).overlay(Capsule().strokeBorder(Theme.line.opacity(0.14), lineWidth: 0.5)))
-                }.buttonStyle(.plain)
-            }
+            .buttonStyle(.glassProminent)
+            .tint(Theme.accentButton)
         }
     }
 
@@ -76,7 +64,7 @@ struct WatchlistView: View {
                 Spacer()
                 Text("\(items.count) tickers").font(.system(size: 14, design: .monospaced)).foregroundStyle(Theme.inkDim)
             }
-            .padding(.horizontal, 4).padding(.top, 24).padding(.bottom, 14)
+            .padding(.horizontal, 4).padding(.top, 8).padding(.bottom, 14)
 
             List {
                 ForEach(items) { item in
@@ -121,7 +109,7 @@ struct WatchlistView: View {
 #Preview(traits: .landscapeLeft) {
     ZStack {
         VaultBackground(performance: 0.3)
-        WatchlistView(onOpenSettings: {})
+        WatchlistView()
             .environment(AppSettings())
     }
     .modelContainer(MockData.previewContainer())

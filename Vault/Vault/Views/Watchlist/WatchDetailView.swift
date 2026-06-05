@@ -17,6 +17,7 @@ struct WatchDetailView: View {
     @State private var showAnalysis = false
 
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 header
@@ -26,9 +27,12 @@ struct WatchDetailView: View {
             .padding(28)
         }
         .background(Theme.bgDeep.opacity(0.001))
-        .presentationBackground(.ultraThickMaterial)
-        .presentationCornerRadius(Theme.sheetRadius)
-        .presentationDetents([.large, .medium])
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Done") { dismiss() }
+            }
+        }
         .sheet(isPresented: $showAnalysis) {
             StockAnalysisView(
                 snapshot: StockSnapshot(ticker: item.ticker, companyName: item.companyName, sector: item.sector,
@@ -42,6 +46,10 @@ struct WatchDetailView: View {
                 latestClose = last
             }
         }
+        }
+        .presentationBackground(.ultraThickMaterial)
+        .presentationCornerRadius(Theme.sheetRadius)
+        .presentationDetents([.large, .medium])
     }
 
     private var header: some View {
@@ -52,10 +60,6 @@ struct WatchDetailView: View {
                 Text(item.companyName).font(.system(size: 15)).foregroundStyle(Theme.inkDim)
             }
             Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                    .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
-            }
         }
     }
 

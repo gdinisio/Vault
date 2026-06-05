@@ -49,7 +49,7 @@ struct AllocationCardView: View {
         }
         .padding(26)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .glassCard()
+        .contentCard()
     }
 
     private var donut: some View {

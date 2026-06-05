@@ -47,21 +47,30 @@ struct EditHoldingView: View {
     private var canSave: Bool { shares > 0 && price > 0 }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Capsule().fill(Theme.line.opacity(0.22))
-                .frame(width: 42, height: 5)
-                .padding(.top, 14).padding(.bottom, 18)
-
-            header
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    identityHeader
                     currencyToggle
                     fieldGrid
                     totalRow
-                    saveButton
                 }
                 .padding(.horizontal, 36)
+                .padding(.top, 12)
                 .padding(.bottom, 30)
+            }
+            .navigationTitle("Edit \(holding.ticker)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .buttonStyle(.glassProminent)
+                        .tint(Theme.gainButton)
+                        .disabled(!canSave)
+                }
             }
         }
         .presentationBackground(.ultraThickMaterial)
@@ -69,20 +78,15 @@ struct EditHoldingView: View {
         .presentationDetents([.large])
     }
 
-    private var header: some View {
+    private var identityHeader: some View {
         HStack(spacing: 14) {
             TickerMark(ticker: holding.ticker, sector: holding.sector, size: 42)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Edit \(holding.ticker)").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text(holding.ticker).font(.system(size: 19, weight: .semibold)).foregroundStyle(Theme.ink)
                 Text(holding.companyName).font(.system(size: 13)).foregroundStyle(Theme.inkDim).lineLimit(1)
             }
             Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                    .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
-            }
         }
-        .padding(.horizontal, 36).padding(.bottom, 20)
     }
 
     private var currencyToggle: some View {
@@ -133,17 +137,6 @@ struct EditHoldingView: View {
         }
         .padding(.top, 14)
         .overlay(alignment: .top) { Rectangle().fill(Theme.line.opacity(0.1)).frame(height: 1) }
-    }
-
-    private var saveButton: some View {
-        Button { save() } label: {
-            Text("Save changes")
-                .font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.onButton)
-                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(LinearGradient(colors: [Theme.gainButton, Theme.gainButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)))
-        }
-        .buttonStyle(.plain).opacity(canSave ? 1 : 0.4).disabled(!canSave)
     }
 
     // MARK: Helpers

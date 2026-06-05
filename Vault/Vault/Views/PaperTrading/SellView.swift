@@ -32,13 +32,31 @@ struct SellView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Capsule().fill(Theme.line.opacity(0.22)).frame(width: 42, height: 5)
-                .padding(.top, 14).padding(.bottom, 8)
-            if sold { confirmation } else { form }
+        NavigationStack {
+            Group {
+                if sold { confirmation } else { form }
+            }
+            .padding(.horizontal, 30)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
+            .navigationTitle(sold ? "Sale placed" : "Sell · Paper")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if !sold { Button("Cancel") { dismiss() } }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if sold {
+                        Button("Done") { dismiss() }
+                    } else if !positions.isEmpty {
+                        Button("Sell") { sell() }
+                            .buttonStyle(.glassProminent)
+                            .tint(Theme.lossButton)
+                            .disabled(!canSell)
+                    }
+                }
+            }
         }
-        .padding(.horizontal, 30)
-        .padding(.bottom, 28)
         .presentationBackground(.ultraThickMaterial)
         .presentationCornerRadius(Theme.sheetRadius)
         .presentationDetents([.medium, .large])
@@ -51,15 +69,6 @@ struct SellView: View {
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Sell · Paper").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
-                Spacer()
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                        .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
-                }.buttonStyle(.plain)
-            }
-
             if positions.isEmpty {
                 Text("You have no open positions to sell.")
                     .font(.system(size: 15)).foregroundStyle(Theme.inkDim)
@@ -120,15 +129,6 @@ struct SellView: View {
                 }
                 .padding(.top, 14)
                 .overlay(alignment: .top) { Rectangle().fill(Theme.line.opacity(0.1)).frame(height: 1) }
-
-                Button { sell() } label: {
-                    Text("Place paper sell").font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 16)
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(LinearGradient(colors: [Theme.lossButton, Theme.lossButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                }
-                .buttonStyle(.plain).opacity(canSell ? 1 : 0.4).disabled(!canSell)
             }
         }
     }
@@ -141,11 +141,6 @@ struct SellView: View {
             Text("Paper sale placed").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
             Text("Sold \(shares) \(selected?.ticker ?? "") for \(Money.currency(proceeds, currency: currency))")
                 .font(.system(size: 14)).foregroundStyle(Theme.inkDim)
-            Button { dismiss() } label: {
-                Text("Done").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 28).padding(.vertical, 13)
-                    .background(Capsule().fill(Theme.line.opacity(0.08)).overlay(Capsule().strokeBorder(Theme.line.opacity(0.16), lineWidth: 0.5)))
-            }.buttonStyle(.plain).padding(.top, 8)
         }
         .padding(.vertical, 24).frame(maxWidth: .infinity)
     }

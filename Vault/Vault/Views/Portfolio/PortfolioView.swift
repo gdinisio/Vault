@@ -15,7 +15,6 @@ struct PortfolioView: View {
 
     @Bindable var viewModel: PortfolioViewModel
     var onOpenAI: () -> Void
-    var onOpenSettings: () -> Void
 
     @State private var showAddSheet = false
     @State private var selectedHolding: Holding?
@@ -33,21 +32,38 @@ struct PortfolioView: View {
     var body: some View {
         GeometryReader { geo in
             let portrait = geo.size.height > geo.size.width
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                if holdings.isEmpty {
-                    emptyState
-                } else {
-                    heroBand(portrait: portrait)
-                        .padding(.top, portrait ? 18 : 26)
-                        .padding(.bottom, portrait ? 16 : 22)
-                    content(portrait: portrait)
+            if holdings.isEmpty {
+                emptyState
+                    .padding(.horizontal, portrait ? 28 : 52)
+            } else if portrait {
+                // Portrait: whole page scrolls; holdings list sizes to its rows.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        heroBand(portrait: true)
+                            .padding(.top, 6)
+                            .padding(.bottom, 16)
+                        content(portrait: true)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
+                .scrollIndicators(.hidden)
+            } else {
+                // Landscape: fixed two-column layout, columns fill the height.
+                VStack(alignment: .leading, spacing: 0) {
+                    heroBand(portrait: false)
+                        .padding(.top, 10)
+                        .padding(.bottom, 22)
+                    content(portrait: false)
+                }
+                .padding(.horizontal, 52)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, portrait ? 28 : 52)
-            .padding(.top, portrait ? 28 : 38)
-            .padding(.bottom, 24)
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent }
         .toast($viewModel.toast)
         .sheet(isPresented: $showAddSheet) {
             AddHoldingView(currency: currency) { holding in
@@ -61,47 +77,38 @@ struct PortfolioView: View {
         .task { await viewModel.refreshPrices(for: holdings) }
     }
 
-    // MARK: Header
+    // MARK: Toolbar
 
-    private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Portfolio")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                Text("Your live holdings · \(currency.rawValue)")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Theme.inkDim)
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        // Leading: utility (refresh) — plain glass.
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                Task { await viewModel.refreshPrices(for: holdings) }
+            } label: {
+                if viewModel.isRefreshing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                }
             }
-            Spacer()
-            HStack(spacing: 12) {
-                HeaderButton(systemImage: "arrow.clockwise", isBusy: viewModel.isRefreshing) {
-                    Task { await viewModel.refreshPrices(for: holdings) }
-                }
-                HeaderButton(systemImage: "gearshape", action: onOpenSettings)
-                Button(action: onOpenAI) {
-                    HStack(spacing: 9) {
-                        Image(systemName: "sparkles").foregroundStyle(Theme.aiPurple)
-                        Text("AI Analysis").font(.system(size: 15.5, weight: .semibold)).foregroundStyle(Theme.ink)
-                    }
-                    .padding(.horizontal, 20).padding(.vertical, 12)
-                    .glassPill()
-                }
-                .buttonStyle(.plain)
-                Button { showAddSheet = true } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus").font(.system(size: 16, weight: .bold))
-                        Text("Add holding").font(.system(size: 15.5, weight: .semibold))
-                    }
-                    .foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 22).padding(.vertical, 12)
-                    .background(
-                        Capsule().fill(Theme.line.opacity(0.10))
-                            .overlay(Capsule().strokeBorder(Theme.line.opacity(0.14), lineWidth: 0.5))
-                    )
-                }
-                .buttonStyle(.plain)
+            .disabled(viewModel.isRefreshing)
+        }
+        // Trailing: primary tools (AI + Add) — prominent, each its own capsule.
+        ToolbarItem(placement: .topBarTrailing) {
+            Button(action: onOpenAI) {
+                Image(systemName: "sparkles")
             }
+            .buttonStyle(.glassProminent)
+            .tint(Theme.aiPurpleButton)
+        }
+        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { showAddSheet = true } label: {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(.glassProminent)
+            .tint(Theme.gainButton)
         }
     }
 
@@ -166,7 +173,7 @@ struct PortfolioView: View {
         Group {
             if portrait {
                 VStack(alignment: .leading, spacing: 22) {
-                    holdingsColumn
+                    holdingsColumn(portrait: true)
                     AllocationCardView(slices: viewModel.allocations(for: holdings), currency: currency)
                         .frame(maxWidth: .infinity)
                 }
@@ -174,18 +181,26 @@ struct PortfolioView: View {
                 HStack(alignment: .top, spacing: 22) {
                     AllocationCardView(slices: viewModel.allocations(for: holdings), currency: currency)
                         .frame(width: 408)
-                    holdingsColumn
+                    holdingsColumn(portrait: false)
                         .frame(maxWidth: .infinity)
                 }
+                .frame(maxHeight: .infinity)
             }
         }
-        .frame(maxHeight: .infinity)
         // Rebuild when the live FX rate lands so rows + allocation use it too.
         .id(settings.fxToken)
     }
 
-    private var holdingsColumn: some View {
-        VStack(alignment: .leading, spacing: 0) {
+    /// Approximate rendered height of one holding row (content + list insets).
+    private let holdingRowHeight: CGFloat = 90
+
+    private func holdingsColumn(portrait: Bool) -> some View {
+        // Portrait: the list is exactly as tall as its rows, up to 5; beyond
+        // that it caps and scrolls internally. Landscape: fills the column.
+        let visibleRows = min(holdings.count, 5)
+        let portraitHeight = CGFloat(visibleRows) * holdingRowHeight
+
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Holdings").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
                 Spacer()
@@ -212,6 +227,8 @@ struct PortfolioView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
+            .frame(maxHeight: portrait ? portraitHeight : .infinity)
+            .scrollDisabled(portrait && holdings.count <= 5)
             .refreshable { await viewModel.refreshPrices(for: holdings) }
         }
     }
@@ -244,32 +261,6 @@ struct PortfolioView: View {
     }
 }
 
-// MARK: - Header icon button
-
-struct HeaderButton: View {
-    let systemImage: String
-    var isBusy: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Group {
-                if isBusy {
-                    ProgressView().controlSize(.small).tint(Theme.inkSoft)
-                } else {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Theme.inkSoft)
-                }
-            }
-            .frame(width: 44, height: 44)
-            .glassPill()
-        }
-        .buttonStyle(.plain)
-        .disabled(isBusy)
-    }
-}
-
 // MARK: - Range chips
 
 struct RangeChips: View {
@@ -299,7 +290,7 @@ struct RangeChips: View {
 #Preview(traits: .landscapeLeft) {
     ZStack {
         VaultBackground(performance: 0.5)
-        PortfolioView(viewModel: PortfolioViewModel(), onOpenAI: {}, onOpenSettings: {})
+        PortfolioView(viewModel: PortfolioViewModel(), onOpenAI: {})
             .environment(AppSettings())
     }
     .modelContainer(MockData.previewContainer())

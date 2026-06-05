@@ -34,6 +34,7 @@ struct PaperPositionDetailView: View {
     }
 
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
@@ -55,18 +56,30 @@ struct PaperPositionDetailView: View {
                     detailRow("Return", Money.percent(position.returnPercent), tint: up ? Theme.gain : Theme.loss)
                     detailRow("Last updated", position.lastUpdated.formatted(date: .abbreviated, time: .shortened))
                 }
-
-                sellButton
             }
             .padding(28)
         }
         .background(Theme.bgDeep.opacity(0.001))
-        .presentationBackground(.ultraThickMaterial)
-        .presentationCornerRadius(Theme.sheetRadius)
-        .presentationDetents([.large, .medium])
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Done") { dismiss() }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Haptics.impact(.rigid); onSell() } label: {
+                    Label("Sell", systemImage: "arrow.down.right")
+                }
+                .buttonStyle(.glassProminent)
+                .tint(Theme.lossButton)
+            }
+        }
         .sheet(isPresented: $showAnalysis) {
             StockAnalysisView(snapshot: snapshot, currency: currency)
         }
+        }
+        .presentationBackground(.ultraThickMaterial)
+        .presentationCornerRadius(Theme.sheetRadius)
+        .presentationDetents([.large, .medium])
     }
 
     private var header: some View {
@@ -81,13 +94,6 @@ struct PaperPositionDetailView: View {
                     .foregroundStyle(Theme.inkDim)
             }
             Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.inkSoft)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Theme.line.opacity(0.08)))
-            }.buttonStyle(.plain)
         }
     }
 
@@ -104,7 +110,7 @@ struct PaperPositionDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(22)
-        .glassCard()
+        .contentCard()
     }
 
     private var analyseButton: some View {
@@ -131,20 +137,6 @@ struct PaperPositionDetailView: View {
         .buttonStyle(.plain)
     }
 
-    private var sellButton: some View {
-        Button { Haptics.impact(.rigid); onSell() } label: {
-            Label("Sell \(position.ticker)", systemImage: "arrow.down.right")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Theme.loss)
-                .frame(maxWidth: .infinity).padding(.vertical, 15)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Theme.loss.opacity(0.14))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.loss.opacity(0.3), lineWidth: 0.5))
-                )
-        }.buttonStyle(.plain)
-    }
-
     // MARK: Building blocks
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
@@ -152,7 +144,7 @@ struct PaperPositionDetailView: View {
             Text(title).vaultLabel()
             VStack(spacing: 12) { content() }
                 .padding(20)
-                .glassCard()
+                .contentCard()
         }
     }
 

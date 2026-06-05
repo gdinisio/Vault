@@ -47,12 +47,7 @@ struct AddHoldingView: View {
     private var canAdd: Bool { selected != nil && shares > 0 && price > 0 }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Capsule().fill(Theme.line.opacity(0.22))
-                .frame(width: 42, height: 5)
-                .padding(.top, 14).padding(.bottom, 18)
-
-            header
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     searchField
@@ -64,35 +59,28 @@ struct AddHoldingView: View {
                             .foregroundStyle(Theme.loss)
                     }
                     totalRow
-                    addButton
                 }
                 .padding(.horizontal, 36)
+                .padding(.top, 12)
                 .padding(.bottom, 30)
+            }
+            .navigationTitle("Add holding")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") { commit() }
+                        .buttonStyle(.glassProminent)
+                        .tint(Theme.gainButton)
+                        .disabled(!canAdd)
+                }
             }
         }
         .presentationBackground(.ultraThickMaterial)
         .presentationCornerRadius(Theme.sheetRadius)
         .presentationDetents([.large])
-    }
-
-    // MARK: Header
-
-    private var header: some View {
-        HStack {
-            Text("Add holding")
-                .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-            Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Theme.inkSoft)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Theme.line.opacity(0.08)))
-            }
-        }
-        .padding(.horizontal, 36)
-        .padding(.bottom, 20)
     }
 
     // MARK: Search
@@ -211,23 +199,6 @@ struct AddHoldingView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.line.opacity(0.1)).frame(height: 1)
         }
-    }
-
-    private var addButton: some View {
-        Button { commit() } label: {
-            Text("Add to portfolio")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.onButton)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(LinearGradient(colors: [Theme.gainButton, Theme.gainButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                )
-        }
-        .buttonStyle(.plain)
-        .opacity(canAdd ? 1 : 0.4)
-        .disabled(!canAdd)
     }
 
     // MARK: Helpers

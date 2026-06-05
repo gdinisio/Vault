@@ -21,6 +21,7 @@ struct HoldingDetailView: View {
     private var up: Bool { holding.profitLoss >= 0 }
 
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
@@ -49,15 +50,28 @@ struct HoldingDetailView: View {
 
                 // Fee-drag note
                 feeImpactNote
-
-                editDeleteRow
             }
             .padding(28)
         }
         .background(Theme.bgDeep.opacity(0.001)) // ensure scroll fills
-        .presentationBackground(.ultraThickMaterial)
-        .presentationCornerRadius(Theme.sheetRadius)
-        .presentationDetents([.large, .medium])
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Done") { dismiss() }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button { Haptics.impact(.light); showEdit = true } label: {
+                        Label("Edit holding", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) { Haptics.warning(); showDeleteConfirm = true } label: {
+                        Label("Delete holding", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+            }
+        }
         .sheet(isPresented: $showAnalysis) {
             StockAnalysisView(snapshot: StockSnapshot(holding: holding), currency: currency)
         }
@@ -70,34 +84,10 @@ struct HoldingDetailView: View {
         } message: {
             Text("This removes \(holding.ticker) from your portfolio. This can't be undone.")
         }
-    }
-
-    private var editDeleteRow: some View {
-        HStack(spacing: 12) {
-            Button { Haptics.impact(.light); showEdit = true } label: {
-                Label("Edit", systemImage: "pencil")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(maxWidth: .infinity).padding(.vertical, 15)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Theme.line.opacity(0.08))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line.opacity(0.14), lineWidth: 0.5))
-                    )
-            }.buttonStyle(.plain)
-
-            Button(role: .destructive) { Haptics.warning(); showDeleteConfirm = true } label: {
-                Label("Delete", systemImage: "trash")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.loss)
-                    .frame(maxWidth: .infinity).padding(.vertical, 15)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Theme.loss.opacity(0.14))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.loss.opacity(0.3), lineWidth: 0.5))
-                    )
-            }.buttonStyle(.plain)
         }
+        .presentationBackground(.ultraThickMaterial)
+        .presentationCornerRadius(Theme.sheetRadius)
+        .presentationDetents([.large, .medium])
     }
 
     private func deleteHolding() {
@@ -143,13 +133,6 @@ struct HoldingDetailView: View {
                     .foregroundStyle(Theme.inkDim)
             }
             Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.inkSoft)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Theme.line.opacity(0.08)))
-            }
         }
     }
 
@@ -165,7 +148,7 @@ struct HoldingDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(22)
-        .glassCard()
+        .contentCard()
     }
 
     private var feeImpactNote: some View {
@@ -194,7 +177,7 @@ struct HoldingDetailView: View {
             Text(title).vaultLabel()
             VStack(spacing: 12) { content() }
                 .padding(20)
-                .glassCard()
+                .contentCard()
         }
     }
 

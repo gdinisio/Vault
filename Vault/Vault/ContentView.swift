@@ -113,25 +113,39 @@ struct ContentView: View {
 
     private var tabView: some View {
         TabView(selection: $selection) {
-            Tab("Portfolio", systemImage: "rectangle.split.3x1", value: VaultTab.portfolio) {
-                PortfolioView(
-                    viewModel: portfolioVM,
-                    onOpenAI: { showAI = true },
-                    onOpenSettings: { selection = .settings }
-                )
+            Tab(value: VaultTab.portfolio) {
+                NavigationStack {
+                    PortfolioView(
+                        viewModel: portfolioVM,
+                        onOpenAI: { showAI = true }
+                    )
+                }
+            } label: {
+                Label("Portfolio", systemImage: "chart.pie.fill")
             }
-            Tab("Paper Trading", systemImage: "doc.text", value: VaultTab.paper) {
-                PaperTradingView(
-                    viewModel: paperVM,
-                    onOpenAI: { showAI = true },
-                    onOpenSettings: { selection = .settings }
-                )
+            Tab(value: VaultTab.paper) {
+                NavigationStack {
+                    PaperTradingView(
+                        viewModel: paperVM,
+                        onOpenAI: { showAI = true }
+                    )
+                }
+            } label: {
+                Label("Paper Trading", systemImage: "chart.line.text.clipboard")
             }
-            Tab("Watchlist", systemImage: "star", value: VaultTab.watchlist) {
-                WatchlistView(onOpenSettings: { selection = .settings })
+            Tab(value: VaultTab.watchlist) {
+                NavigationStack {
+                    WatchlistView()
+                }
+            } label: {
+                Label("Watchlist", systemImage: "star")
             }
-            Tab("Settings", systemImage: "gearshape", value: VaultTab.settings) {
-                SettingsView(settings: settings, paperVM: paperVM)
+            Tab(value: VaultTab.settings) {
+                NavigationStack {
+                    SettingsView(settings: settings, paperVM: paperVM)
+                }
+            } label: {
+                Label("Settings", systemImage: "gearshape")
             }
         }
         .modify {

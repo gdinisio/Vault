@@ -31,14 +31,6 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Settings")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                Text("Keys, backups and display preferences")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Theme.inkDim)
-                    .padding(.bottom, 28)
-
                 VStack(alignment: .leading, spacing: 24) {
                     currencySection
                     paperCashSection
@@ -49,10 +41,11 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
             }
             .padding(.horizontal, 52)
-            .padding(.top, 38)
+            .padding(.top, 12)
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
+        .navigationBarTitleDisplayMode(.inline)
         .toast($toastMessage)
         .onAppear(perform: load)
         .fileExporter(
@@ -218,7 +211,7 @@ struct SettingsView: View {
             content()
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .glassCard()
+                .contentCard()
         }
     }
 

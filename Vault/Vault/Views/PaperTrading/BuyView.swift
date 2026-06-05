@@ -31,13 +31,31 @@ struct BuyView: View {
     private var canBuy: Bool { selected != nil && shares > 0 && price > 0 }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Capsule().fill(Theme.line.opacity(0.22)).frame(width: 42, height: 5)
-                .padding(.top, 14).padding(.bottom, 8)
-            if placed { confirmation } else { form }
+        NavigationStack {
+            Group {
+                if placed { confirmation } else { form }
+            }
+            .padding(.horizontal, 30)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
+            .navigationTitle(placed ? "Order placed" : "Buy · Paper")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if !placed { Button("Cancel") { dismiss() } }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if placed {
+                        Button("Done") { dismiss() }
+                    } else {
+                        Button("Buy") { placeOrder() }
+                            .buttonStyle(.glassProminent)
+                            .tint(Theme.gainButton)
+                            .disabled(!canBuy)
+                    }
+                }
+            }
         }
-        .padding(.horizontal, 30)
-        .padding(.bottom, 28)
         .presentationBackground(.ultraThickMaterial)
         .presentationCornerRadius(Theme.sheetRadius)
         .presentationDetents([.medium, .large])
@@ -48,12 +66,6 @@ struct BuyView: View {
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Buy · Paper").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
-                Spacer()
-                closeButton
-            }
-
             // search
             VStack(alignment: .leading, spacing: 8) {
                 Text("Ticker").vaultLabel()
@@ -119,8 +131,6 @@ struct BuyView: View {
             }
             .padding(.top, 14)
             .overlay(alignment: .top) { Rectangle().fill(Theme.line.opacity(0.1)).frame(height: 1) }
-
-            primaryButton("Place paper order", enabled: canBuy) { placeOrder() }
         }
     }
 
@@ -134,12 +144,6 @@ struct BuyView: View {
             Text("Paper order placed").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
             Text("Bought \(shares) \(selected?.symbol ?? "") @ \(Money.currency(price, currency: currency))")
                 .font(.system(size: 14)).foregroundStyle(Theme.inkDim)
-            Button { dismiss() } label: {
-                Text("Done").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 28).padding(.vertical, 13)
-                    .background(Capsule().fill(Theme.line.opacity(0.08)).overlay(Capsule().strokeBorder(Theme.line.opacity(0.16), lineWidth: 0.5)))
-            }
-            .buttonStyle(.plain).padding(.top, 8)
         }
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity)
@@ -147,30 +151,12 @@ struct BuyView: View {
 
     // MARK: Pieces
 
-    private var closeButton: some View {
-        Button { dismiss() } label: {
-            Image(systemName: "xmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
-        }.buttonStyle(.plain)
-    }
-
     private func summaryRow(_ label: String, _ value: String, emphasised: Bool = false) -> some View {
         HStack {
             Text(label).font(.system(size: 14)).foregroundStyle(Theme.inkDim)
             Spacer()
             Text(value).font(.system(size: emphasised ? 22 : 15, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
         }
-    }
-
-    private func primaryButton(_ title: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title).font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.onButton)
-                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(LinearGradient(colors: [Theme.gainButton, Theme.gainButton.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)))
-        }
-        .buttonStyle(.plain).opacity(enabled ? 1 : 0.4).disabled(!enabled)
     }
 
     // MARK: Actions

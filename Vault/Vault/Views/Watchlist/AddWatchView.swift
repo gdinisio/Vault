@@ -21,50 +21,47 @@ struct AddWatchView: View {
     @State private var note: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            Capsule().fill(Theme.line.opacity(0.22)).frame(width: 42, height: 5)
-                .padding(.top, 14).padding(.bottom, 18)
-
-            HStack {
-                Text("Add to watchlist").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
-                Spacer()
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                        .frame(width: 38, height: 38).background(Circle().fill(Theme.line.opacity(0.08)))
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkDim)
+                    TextField("Search ticker or company…", text: $query)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.characters)
+                        .foregroundStyle(Theme.ink)
+                        .onChange(of: query) { _, v in scheduleSearch(v) }
+                    if searching { ProgressView().controlSize(.small) }
                 }
-            }
-            .padding(.horizontal, 30).padding(.bottom, 18)
+                .padding(.horizontal, 16).padding(.vertical, 13)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Theme.line.opacity(0.06))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line.opacity(0.12), lineWidth: 0.5)))
+                .padding(.horizontal, 30)
+                .padding(.top, 8)
 
-            HStack(spacing: 12) {
-                Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkDim)
-                TextField("Search ticker or company…", text: $query)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
-                    .foregroundStyle(Theme.ink)
-                    .onChange(of: query) { _, v in scheduleSearch(v) }
-                if searching { ProgressView().controlSize(.small) }
-            }
-            .padding(.horizontal, 16).padding(.vertical, 13)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Theme.line.opacity(0.06))
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line.opacity(0.12), lineWidth: 0.5)))
-            .padding(.horizontal, 30)
+                if let note {
+                    Text(note).font(.system(size: 13)).foregroundStyle(Theme.inkDim)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 30).padding(.top, 10)
+                }
 
-            if let note {
-                Text(note).font(.system(size: 13)).foregroundStyle(Theme.inkDim)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 30).padding(.top, 10)
-            }
-
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(results) { r in
-                        Button { add(r) } label: { row(r) }.buttonStyle(.plain)
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(results) { r in
+                            Button { add(r) } label: { row(r) }.buttonStyle(.plain)
+                        }
                     }
+                    .padding(.horizontal, 24).padding(.top, 14)
                 }
-                .padding(.horizontal, 24).padding(.top, 14)
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
+            .navigationTitle("Add to watchlist")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
         }
         .presentationBackground(.ultraThickMaterial)
         .presentationCornerRadius(Theme.sheetRadius)

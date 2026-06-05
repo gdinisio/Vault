@@ -3,8 +3,7 @@
 //  Vault
 //
 //  Compiles portfolio data + per-holding news, runs it through the AI provider
-//  chain (Gemini → Groq), and maintains the follow-up conversation. Also builds
-//  the self-contained prompt for the copy-paste flow.
+//  chain (Gemini → Groq), and maintains the follow-up conversation.
 //
 
 import SwiftUI
@@ -72,7 +71,7 @@ final class AIAnalysisViewModel {
     }
 
     /// Kick off the initial analysis when the sheet appears. With a provider key
-    /// it runs automatically; otherwise the user uses the copy-paste bar.
+    /// it runs automatically; otherwise it stays idle until a key is added.
     func generateInitialAnalysis() async {
         guard messages.isEmpty else { return }
         generatedAt = .now

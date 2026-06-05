@@ -40,6 +40,26 @@ struct GlassCard: ViewModifier {
     }
 }
 
+// MARK: - Matte content card surface (flat — glass is reserved for chrome)
+
+struct ContentCard: ViewModifier {
+    var cornerRadius: CGFloat = Theme.contentRadius
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Theme.surface)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .strokeBorder(Theme.surfaceStroke, lineWidth: 0.5)
+                    }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .shadow(color: Theme.surfaceShadow, radius: 14, x: 0, y: 8)
+    }
+}
+
 // MARK: - Thin glass pill (chips, segmented controls)
 
 struct GlassPill: ViewModifier {
@@ -66,6 +86,12 @@ extension View {
     /// Thin glass pill surface.
     func glassPill() -> some View {
         modifier(GlassPill())
+    }
+
+    /// Flat, opaque content surface. The matte counterpart to `glassCard()` —
+    /// use for content (rows, cards, charts) so glass stays on the chrome.
+    func contentCard(cornerRadius: CGFloat = Theme.contentRadius) -> some View {
+        modifier(ContentCard(cornerRadius: cornerRadius))
     }
 }
 
