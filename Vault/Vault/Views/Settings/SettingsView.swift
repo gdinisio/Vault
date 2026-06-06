@@ -19,7 +19,7 @@ struct SettingsView: View {
     @State private var finnhubKey = ""
     @State private var geminiKey = ""
     @State private var groqKey = ""
-    @State private var startingCashText = ""
+    @State private var startingCashAmount: Double = 10_000
     @State private var toastMessage: Toast?
 
     // Backup state
@@ -30,19 +30,14 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 24) {
-                    currencySection
-                    paperCashSection
-                    backupSection
-                    apiKeysSection
-                }
-                .frame(maxWidth: 720)
-                .frame(maxWidth: .infinity)
+            VStack(alignment: .leading, spacing: 24) {
+                currencySection
+                paperCashSection
+                backupSection
+                apiKeysSection
             }
-            .padding(.horizontal, 52)
-            .padding(.top, 12)
-            .padding(.bottom, 40)
+            .vaultPagePadding()
+            .padding(.bottom, 16)
         }
         .scrollIndicators(.hidden)
         .navigationBarTitleDisplayMode(.inline)
@@ -88,26 +83,37 @@ struct SettingsView: View {
 
     private var paperCashSection: some View {
         section("Paper trading") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Starting cash balance").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
-                HStack {
-                    Text(settings.displayCurrency.symbol).foregroundStyle(Theme.inkDim)
-                    TextField("10000", text: $startingCashText)
-                        .textFieldStyle(.plain)
-                        .keyboardType(.decimalPad)
-                        .font(.system(size: 18, design: .monospaced))
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Starting cash balance")
+                        .font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+                    Spacer()
+                    Text(Money.currency0(Money.toBase(startingCashAmount, from: settings.displayCurrency), currency: settings.displayCurrency))
+                        .font(.system(size: 20, weight: .semibold, design: .monospaced))
                         .foregroundStyle(Theme.ink)
+                        .contentTransition(.numericText())
                 }
-                .padding(.horizontal, 15).padding(.vertical, 12).fieldBox()
+
+                Slider(
+                    value: $startingCashAmount,
+                    in: 10_000...50_000,
+                    step: 10_000
+                ) {
+                    Text("Starting cash")
+                } minimumValueLabel: {
+                    Text("\(settings.displayCurrency.symbol)10k").font(.caption2.monospacedDigit()).foregroundStyle(Theme.inkDim)
+                } maximumValueLabel: {
+                    Text("\(settings.displayCurrency.symbol)50k").font(.caption2.monospacedDigit()).foregroundStyle(Theme.inkDim)
+                }
+                .tint(Theme.accent)
+                .sensoryFeedback(.selection, trigger: startingCashAmount)
 
                 Button {
-                    if let entered = Double(startingCashText), entered > 0 {
-                        let base = Money.toBase(entered, from: settings.displayCurrency)
-                        settings.startingPaperCash = base
-                        paperVM.resetCash(to: base)
-                        Haptics.success()
-                        toastMessage = Toast(message: "Paper balance reset to \(Money.currency(base, currency: settings.displayCurrency)).", kind: .success)
-                    }
+                    let base = Money.toBase(startingCashAmount, from: settings.displayCurrency)
+                    settings.startingPaperCash = base
+                    paperVM.resetCash(to: base)
+                    Haptics.success()
+                    toastMessage = Toast(message: "Paper balance reset to \(Money.currency(base, currency: settings.displayCurrency)).", kind: .success)
                 } label: {
                     Text("Reset balance to this amount")
                         .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.accent)
@@ -126,12 +132,27 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 12) {
-                    actionButton("Export backup", systemImage: "square.and.arrow.up", tint: Theme.accent) {
+                    Button {
                         startExport()
+                    } label: {
+                        Label("Export backup", systemImage: "square.and.arrow.up")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
                     }
-                    actionButton("Import backup", systemImage: "square.and.arrow.down", tint: Theme.gain) {
+                    .buttonStyle(.glass)
+                    .tint(Theme.accent)
+
+                    Button {
                         showRestoreConfirm = true
+                    } label: {
+                        Label("Import backup", systemImage: "square.and.arrow.down")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
                     }
+                    .buttonStyle(.glass)
+                    .tint(Theme.gain)
                 }
             }
         }
@@ -169,12 +190,13 @@ struct SettingsView: View {
                 Text("AI analysis uses Gemini first, then falls back to Groq when Gemini's limit is reached. Add at least one key to enable in-app analysis.")
                     .font(.system(size: 12)).foregroundStyle(Theme.inkDim)
                 Button { saveKeys() } label: {
-                    Text("Save keys")
+                    Label("Save keys", systemImage: "key.fill")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.onButton)
-                        .frame(maxWidth: .infinity).padding(.vertical, 13)
-                        .background(Capsule().fill(Theme.accentButton))
-                }.buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.glass)
+                .tint(Theme.accent)
 
                 Text("Keys are stored securely in the iOS Keychain — never in plain settings or your backup file.")
                     .font(.system(size: 12)).foregroundStyle(Theme.inkDim)
@@ -237,7 +259,9 @@ struct SettingsView: View {
         finnhubKey = KeychainService.shared.get(.finnhub) ?? ""
         geminiKey = KeychainService.shared.get(.gemini) ?? ""
         groqKey = KeychainService.shared.get(.groq) ?? ""
-        startingCashText = String(Int(Money.convert(settings.startingPaperCash, to: settings.displayCurrency).rounded()))
+        let converted = Money.convert(settings.startingPaperCash, to: settings.displayCurrency)
+        let snapped = (converted / 10_000).rounded() * 10_000
+        startingCashAmount = min(50_000, max(10_000, snapped))
     }
 
     private func saveKeys() {

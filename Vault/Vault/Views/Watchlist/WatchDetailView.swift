@@ -12,12 +12,10 @@ struct WatchDetailView: View {
     let item: WatchItem
     var currency: DisplayCurrency = .gbp
 
-    @Environment(\.dismiss) private var dismiss
     @State private var latestClose: Double = 0
     @State private var showAnalysis = false
 
     var body: some View {
-        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 header
@@ -27,12 +25,8 @@ struct WatchDetailView: View {
             .padding(28)
         }
         .background(Theme.bgDeep.opacity(0.001))
+        .navigationTitle(item.ticker)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Done") { dismiss() }
-            }
-        }
         .sheet(isPresented: $showAnalysis) {
             StockAnalysisView(
                 snapshot: StockSnapshot(ticker: item.ticker, companyName: item.companyName, sector: item.sector,
@@ -46,10 +40,6 @@ struct WatchDetailView: View {
                 latestClose = last
             }
         }
-        }
-        .presentationBackground(.ultraThickMaterial)
-        .presentationCornerRadius(Theme.sheetRadius)
-        .presentationDetents([.large, .medium])
     }
 
     private var header: some View {

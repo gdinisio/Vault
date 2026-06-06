@@ -21,7 +21,6 @@ struct HoldingDetailView: View {
     private var up: Bool { holding.profitLoss >= 0 }
 
     var body: some View {
-        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
@@ -48,17 +47,14 @@ struct HoldingDetailView: View {
                     detailRow("Purchased", holding.purchaseDate.formatted(date: .abbreviated, time: .omitted))
                 }
 
-                // Fee-drag note
                 feeImpactNote
             }
             .padding(28)
         }
-        .background(Theme.bgDeep.opacity(0.001)) // ensure scroll fills
+        .background(Theme.bgDeep.opacity(0.001))
+        .navigationTitle(holding.ticker)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Done") { dismiss() }
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button { Haptics.impact(.light); showEdit = true } label: {
@@ -84,10 +80,6 @@ struct HoldingDetailView: View {
         } message: {
             Text("This removes \(holding.ticker) from your portfolio. This can't be undone.")
         }
-        }
-        .presentationBackground(.ultraThickMaterial)
-        .presentationCornerRadius(Theme.sheetRadius)
-        .presentationDetents([.large, .medium])
     }
 
     private func deleteHolding() {

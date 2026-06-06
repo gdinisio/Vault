@@ -72,25 +72,13 @@ struct PortfolioPerformanceChart: View {
     // MARK: Range chips
 
     private var chips: some View {
-        HStack(spacing: 2) {
+        Picker("Range", selection: $range) {
             ForEach(ChartRange.allCases) { r in
-                Button {
-                    range = r
-                } label: {
-                    Text(r.rawValue)
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                        .lineLimit(1)
-                        .fixedSize()
-                        .foregroundStyle(range == r ? Theme.ink : Theme.inkDim)
-                        .padding(.horizontal, 11).padding(.vertical, 6)
-                        .background(Capsule().fill(Theme.line.opacity(range == r ? 0.14 : 0)))
-                }
-                .buttonStyle(.plain)
-                .sensoryFeedback(.selection, trigger: range == r)
+                Text(r.rawValue).tag(r)
             }
         }
-        .padding(3)
-        .glassPill()
+        .pickerStyle(.segmented)
+        .sensoryFeedback(.selection, trigger: range)
     }
 
     // MARK: Chart

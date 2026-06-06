@@ -182,24 +182,13 @@ private struct RangePicker: View {
     @Binding var range: ChartRange
 
     var body: some View {
-        HStack(spacing: 4) {
+        Picker("Range", selection: $range) {
             ForEach(ChartRange.allCases) { r in
-                Button {
-                    range = r
-                } label: {
-                    Text(r.rawValue)
-                        .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(range == r ? Theme.ink : Theme.inkDim)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(Theme.line.opacity(range == r ? 0.14 : 0)))
-                }
-                .buttonStyle(.plain)
-                .sensoryFeedback(.selection, trigger: range == r)
+                Text(r.rawValue).tag(r)
             }
         }
-        .padding(4)
-        .glassPill()
+        .pickerStyle(.segmented)
+        .sensoryFeedback(.selection, trigger: range)
     }
 }
 

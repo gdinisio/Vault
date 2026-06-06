@@ -17,7 +17,6 @@ struct PortfolioView: View {
     var onOpenAI: () -> Void
 
     @State private var showAddSheet = false
-    @State private var selectedHolding: Holding?
 
     private var sortedHoldings: [Holding] {
         holdings.sorted { $0.currentValue > $1.currentValue }
@@ -34,7 +33,7 @@ struct PortfolioView: View {
             let portrait = geo.size.height > geo.size.width
             if holdings.isEmpty {
                 emptyState
-                    .padding(.horizontal, portrait ? 28 : 52)
+                    .vaultPagePadding()
             } else if portrait {
                 // Portrait: whole page scrolls; holdings list sizes to its rows.
                 ScrollView {
@@ -44,9 +43,7 @@ struct PortfolioView: View {
                             .padding(.bottom, 16)
                         content(portrait: true)
                     }
-                    .padding(.horizontal, 28)
-                    .padding(.top, 12)
-                    .padding(.bottom, 24)
+                    .vaultPagePadding()
                 }
                 .scrollIndicators(.hidden)
             } else {
@@ -57,12 +54,11 @@ struct PortfolioView: View {
                         .padding(.bottom, 22)
                     content(portrait: false)
                 }
-                .padding(.horizontal, 52)
-                .padding(.top, 16)
-                .padding(.bottom, 24)
+                .vaultPagePadding()
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Portfolio")
         .toolbar { toolbarContent }
         .toast($viewModel.toast)
         .sheet(isPresented: $showAddSheet) {
@@ -70,9 +66,6 @@ struct PortfolioView: View {
                 viewModel.add(holding, in: context)
                 Task { await viewModel.refreshPrices(for: [holding]) }
             }
-        }
-        .sheet(item: $selectedHolding) { holding in
-            HoldingDetailView(holding: holding, currency: currency)
         }
         .task { await viewModel.refreshPrices(for: holdings) }
     }
@@ -117,31 +110,34 @@ struct PortfolioView: View {
     @ViewBuilder
     private func heroBand(portrait: Bool) -> some View {
         let figures = VStack(alignment: .leading, spacing: 0) {
-            Text("Total portfolio value").vaultLabel().padding(.bottom, 10)
+            Text("Total portfolio value").vaultLabel().padding(.bottom, 8)
             Text(Money.currency(summary.currentValue, currency: currency))
-                .font(.system(size: portrait ? 56 : 76, weight: .semibold, design: .monospaced))
+                .font(.system(size: portrait ? 44 : 60, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Theme.ink)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
-            HStack(spacing: 18) {
-                HStack(spacing: 7) {
+            HStack(spacing: 14) {
+                HStack(spacing: 6) {
                     Image(systemName: summary.profitLoss >= 0 ? "arrow.up" : "arrow.down")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Theme.tone(summary.profitLoss))
-                        .frame(width: 26, height: 26)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.tone(summary.profitLoss).opacity(0.18)))
+                        .frame(width: 22, height: 22)
+                        .background(RoundedRectangle(cornerRadius: 7).fill(Theme.tone(summary.profitLoss).opacity(0.18)))
                     Text(Money.signed(summary.profitLoss, currency: currency))
-                        .font(.system(size: 21, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
                         .foregroundStyle(Theme.tone(summary.profitLoss))
+                        .lineLimit(1).minimumScaleFactor(0.8)
                     Text(Money.percent(summary.returnPercent))
-                        .font(.system(size: 21, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
                         .foregroundStyle(Theme.tone(summary.profitLoss))
+                        .lineLimit(1).minimumScaleFactor(0.8)
                 }
-                Text("Annualised \(Money.percent(summary.annualisedReturn))")
-                    .font(.system(size: 15, design: .monospaced))
+                Text("Ann. \(Money.percent(summary.annualisedReturn))")
+                    .font(.system(size: 13, design: .monospaced))
                     .foregroundStyle(Theme.inkDim)
+                    .lineLimit(1)
             }
-            .padding(.top, 14)
+            .padding(.top, 10)
         }
         let chart = PortfolioPerformanceChart(
             holdings: holdings,
@@ -192,7 +188,7 @@ struct PortfolioView: View {
     }
 
     /// Approximate rendered height of one holding row (content + list insets).
-    private let holdingRowHeight: CGFloat = 90
+    private let holdingRowHeight: CGFloat = 76
 
     private func holdingsColumn(portrait: Bool) -> some View {
         // Portrait: the list is exactly as tall as its rows, up to 5; beyond
@@ -210,24 +206,29 @@ struct PortfolioView: View {
 
             List {
                 ForEach(sortedHoldings) { holding in
-                    HoldingRowView(holding: holding, currency: currency)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .contentShape(Rectangle())
-                        .onTapGesture { selectedHolding = holding }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                Haptics.impact(.rigid)
-                                viewModel.delete(holding, in: context)
-                            } label: { Label("Delete", systemImage: "trash") }
-                        }
+                    NavigationLink(value: holding) {
+                        HoldingRowView(holding: holding, currency: currency)
+                    }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            Haptics.impact(.rigid)
+                            viewModel.delete(holding, in: context)
+                        } label: { Label("Delete", systemImage: "trash") }
+                    }
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            .frame(maxHeight: portrait ? portraitHeight : .infinity)
+            // Portrait needs a *fixed* height (not maxHeight) or the List
+            // collapses inside the surrounding ScrollView.
+            .modify {
+                if portrait { $0.frame(height: portraitHeight) }
+                else { $0.frame(maxHeight: .infinity) }
+            }
             .scrollDisabled(portrait && holdings.count <= 5)
             .refreshable { await viewModel.refreshPrices(for: holdings) }
         }

@@ -21,7 +21,6 @@ struct PaperTradingView: View {
 
     @State private var showBuy = false
     @State private var showSell = false
-    @State private var selectedPosition: PaperPosition?
 
     private var currency: DisplayCurrency {
         _ = settings.fxToken   // re-render when live FX rates update
@@ -41,11 +40,10 @@ struct PaperTradingView: View {
                     .padding(.bottom, portrait ? 16 : 22)
                 content(portrait: portrait)
             }
-            .padding(.horizontal, portrait ? 28 : 52)
-            .padding(.top, portrait ? 12 : 16)
-            .padding(.bottom, 24)
+            .vaultPagePadding()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Paper Trading")
         .toolbar { toolbarContent }
         .id(settings.fxToken)   // rebuild when live FX rate lands
         .toast($viewModel.toast)
@@ -54,14 +52,6 @@ struct PaperTradingView: View {
         }
         .sheet(isPresented: $showSell) {
             SellView(viewModel: viewModel, positions: positions, currency: currency)
-        }
-        .sheet(item: $selectedPosition) { position in
-            PaperPositionDetailView(position: position, currency: currency) {
-                // Dismiss the detail first so we never touch a position that
-                // selling may delete, then open the Sell sheet.
-                selectedPosition = nil
-                showSell = true
-            }
         }
         .task { await viewModel.refreshPrices(for: positions) }
     }
@@ -105,46 +95,56 @@ struct PaperTradingView: View {
 
     @ViewBuilder
     private func equityBand(portrait: Bool) -> some View {
-        let equity = VStack(alignment: .leading, spacing: 8) {
+        // Hero equity value
+        let equityValue = VStack(alignment: .leading, spacing: 6) {
             Text("Account equity").vaultLabel()
             Text(Money.currency(summary.equity, currency: currency))
-                .font(.system(size: portrait ? 48 : 64, weight: .semibold, design: .monospaced))
+                .font(.system(size: portrait ? 40 : 52, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Theme.ink)
                 .minimumScaleFactor(0.5).lineLimit(1)
         }
-        let pl = VStack(alignment: .leading, spacing: 4) {
-            Text("Open P&L").vaultLabel()
-            Text(Money.signed(summary.openProfitLoss, currency: currency))
-                .font(.system(size: 30, weight: .semibold, design: .monospaced))
+
+        // Inline stat block shared by both orientations
+        let stats = HStack(spacing: 0) {
+            Divider()
+                .frame(height: 36)
+                .padding(.horizontal, 18)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Open P&L").vaultLabel()
+                HStack(spacing: 6) {
+                    Text(Money.signed(summary.openProfitLoss, currency: currency))
+                    Text(Money.percent(summary.openReturnPercent))
+                }
+                .font(.system(size: 16, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Theme.tone(summary.openProfitLoss))
-                .lineLimit(1).minimumScaleFactor(0.6)
-            Text(Money.percent(summary.openReturnPercent))
-                .font(.system(size: 17, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Theme.tone(summary.openProfitLoss))
-        }
-        let cash = VStack(alignment: .leading, spacing: 4) {
-            Text("Virtual cash").vaultLabel()
-            Text(Money.currency0(viewModel.cash, currency: currency))
-                .font(.system(size: 30, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1).minimumScaleFactor(0.6)
+                .lineLimit(1).minimumScaleFactor(0.7)
+            }
+
+            Divider()
+                .frame(height: 36)
+                .padding(.horizontal, 18)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Virtual cash").vaultLabel()
+                Text(Money.currency0(viewModel.cash, currency: currency))
+                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+
+            Spacer()
         }
 
         if portrait {
-            VStack(alignment: .leading, spacing: 18) {
-                equity
-                HStack(alignment: .bottom, spacing: 44) {
-                    pl
-                    cash
-                    Spacer()
-                }
+            VStack(alignment: .leading, spacing: 14) {
+                equityValue
+                stats
             }
         } else {
-            HStack(alignment: .bottom, spacing: 44) {
-                equity
-                pl.padding(.bottom, 8)
-                cash.padding(.bottom, 8)
-                Spacer()
+            HStack(alignment: .bottom, spacing: 0) {
+                equityValue
+                stats.padding(.bottom, 4)
             }
         }
     }
@@ -210,12 +210,10 @@ struct PaperTradingView: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(sortedPositions) { position in
-                        PaperPositionRowView(position: position, currency: currency)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                Haptics.impact(.light)
-                                selectedPosition = position
-                            }
+                        NavigationLink(value: position) {
+                            PaperPositionRowView(position: position, currency: currency)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }

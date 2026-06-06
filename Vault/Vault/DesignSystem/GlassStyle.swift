@@ -93,6 +93,30 @@ extension View {
     func contentCard(cornerRadius: CGFloat = Theme.contentRadius) -> some View {
         modifier(ContentCard(cornerRadius: cornerRadius))
     }
+
+    /// Consistent page padding shared by every tab's content so horizontal and
+    /// vertical insets line up exactly across the app.
+    func vaultPagePadding() -> some View {
+        modifier(VaultPagePadding())
+    }
+}
+
+// MARK: - Consistent page padding
+
+struct VaultPagePadding: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var hSize
+
+    /// Horizontal page inset — wider on iPad (regular), tighter on iPhone.
+    static func horizontal(_ size: UserInterfaceSizeClass?) -> CGFloat {
+        size == .compact ? 20 : 40
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, Self.horizontal(hSize))
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+    }
 }
 
 // MARK: - Uppercase label style

@@ -83,6 +83,9 @@ final class AIAnalysisViewModel {
     func ask(_ text: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        // Guarantee the full portfolio + news context is attached to every
+        // question, even if asked before the initial analysis finished loading.
+        await loadContext()
         await exchange(userText: trimmed, showUserMessage: true)
     }
 

@@ -10,6 +10,7 @@ import SwiftData
 
 struct AddWatchView: View {
     var existing: [String]
+    var listName: String = "Watchlist"
     var onAdd: (WatchItem) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -114,7 +115,7 @@ struct AddWatchView: View {
 
     private func add(_ r: AddHoldingView.SymbolResult) {
         guard !existing.contains(r.symbol) else { return }
-        onAdd(WatchItem(ticker: r.symbol, companyName: r.name, sector: r.sector))
+        onAdd(WatchItem(ticker: r.symbol, companyName: r.name, sector: r.sector, listName: listName))
         Haptics.success()
         dismiss()
     }

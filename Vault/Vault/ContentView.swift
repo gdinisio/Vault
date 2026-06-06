@@ -2,15 +2,16 @@
 //  ContentView.swift
 //  Vault
 //
-//  App shell: two-tab TabView over a performance-reactive Liquid Glass
-//  background, with the AI Analysis and Settings sheets hosted at the top
-//  level so they're reachable from both tabs.
+//  App shell: a sidebar-adaptable TabView. On iPad it shows a Liquid Glass
+//  sidebar that the user can collapse into a floating top tab bar (like Files /
+//  Photos); on iPhone it's a tab bar. Each section is its own NavigationStack,
+//  and item details (holding / position / ticker) push as destinations.
 //
 
 import SwiftUI
 import SwiftData
 
-enum VaultTab: Hashable { case portfolio, paper, watchlist, settings }
+enum VaultTab: Hashable { case portfolio, paper, watchlist, search, settings }
 
 struct ContentView: View {
     @Environment(AppSettings.self) private var settings
@@ -23,8 +24,12 @@ struct ContentView: View {
     @State private var selection: VaultTab = .portfolio
     @State private var showAI = false
 
-    /// AI analysis subject depends on the active tab: real holdings on the
-    /// Portfolio side, paper positions on the Paper Trading side.
+    private var currency: DisplayCurrency {
+        _ = settings.fxToken
+        return settings.displayCurrency
+    }
+
+    /// AI analysis subject depends on the active section.
     private var aiInput: (digests: [HoldingDigest], summary: PortfolioSummary, title: String) {
         if selection == .paper {
             let s = paperVM.summary(positions: positions)
@@ -44,14 +49,15 @@ struct ContentView: View {
 
     private var performance: Double {
         switch selection {
-        case .portfolio, .settings, .watchlist: return portfolioVM.summary(for: holdings).performanceSignal
         case .paper: return paperVM.summary(positions: positions).performanceSignal
+        default:     return portfolioVM.summary(for: holdings).performanceSignal
         }
     }
 
     var body: some View {
         ZStack {
             VaultBackground(performance: performance)
+                .ignoresSafeArea()
 
             tabView
         }
@@ -61,30 +67,87 @@ struct ContentView: View {
             AIAnalysisView(
                 digests: input.digests,
                 summary: input.summary,
-                currency: settings.displayCurrency,
+                currency: currency,
                 title: input.title
             )
         }
         .task { await refreshFXRates() }
-        // Rebuild widget snapshot on launch and whenever data/FX changes.
         .onChange(of: holdings.count) { _, _ in rebuildWidgetSnapshot() }
         .onChange(of: positions.count) { _, _ in rebuildWidgetSnapshot() }
-        .onChange(of: watch.count) { _, _ in rebuildWidgetSnapshot() }
+        .onChange(of: watch.count)    { _, _ in rebuildWidgetSnapshot() }
         .onChange(of: settings.fxToken) { _, _ in rebuildWidgetSnapshot() }
-        // Deep-link routing: widgets open vault://portfolio|paper|watchlist|ticker/SYM
         .onOpenURL { url in handleDeepLink(url) }
     }
 
-    /// Fetch live FX rates so display-currency values are accurate.
+    // MARK: - Tab view (sidebar-adaptable)
+
+    private var tabView: some View {
+        TabView(selection: $selection) {
+            Tab(value: VaultTab.portfolio) {
+                NavigationStack {
+                    PortfolioView(viewModel: portfolioVM, onOpenAI: { showAI = true })
+                        .navigationDestination(for: Holding.self) { holding in
+                            HoldingDetailView(holding: holding, currency: currency)
+                        }
+                }
+            } label: {
+                Label("Portfolio", systemImage: "chart.pie")
+            }
+
+            Tab(value: VaultTab.paper) {
+                NavigationStack {
+                    PaperTradingView(viewModel: paperVM, onOpenAI: { showAI = true })
+                        .navigationDestination(for: PaperPosition.self) { position in
+                            PaperPositionDetailView(position: position, currency: currency,
+                                                    viewModel: paperVM, positions: positions)
+                        }
+                }
+            } label: {
+                Label("Paper Trading", systemImage: "chart.line.text.clipboard")
+            }
+
+            Tab(value: VaultTab.watchlist) {
+                NavigationStack {
+                    WatchlistsView()
+                        .navigationDestination(for: WatchlistGroup.self) { group in
+                            WatchlistGroupDetailView(group: group)
+                        }
+                        .navigationDestination(for: WatchItem.self) { item in
+                            WatchDetailView(item: item, currency: currency)
+                        }
+                }
+            } label: {
+                Label("Watchlists", systemImage: "star")
+            }
+
+            Tab(value: VaultTab.search, role: .search) {
+                NavigationStack {
+                    SearchView()
+                }
+            } label: {
+                Label("Search", systemImage: "magnifyingglass")
+            }
+
+            Tab(value: VaultTab.settings) {
+                NavigationStack {
+                    SettingsView(settings: settings, paperVM: paperVM)
+                }
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+    }
+
+    // MARK: - Helpers
+
     private func refreshFXRates() async {
         if let rates = await FXService.shared.fetchRates() {
             await MainActor.run {
                 for (currency, rate) in rates { Money.rates[currency] = rate }
-                settings.fxToken &+= 1   // nudge dependent views to recompute
+                settings.fxToken &+= 1
             }
         }
-        // Rebuild snapshot after FX lands (fxToken change also triggers onChange,
-        // but we do it here too so the very first launch gets a snapshot).
         rebuildWidgetSnapshot()
     }
 
@@ -106,54 +169,8 @@ struct ContentView: View {
         case "paper":      selection = .paper
         case "watchlist":  selection = .watchlist
         case "settings":   selection = .settings
-        case "ticker":     selection = .portfolio   // opens portfolio; detail tap is future work
+        case "ticker":     selection = .watchlist
         default:           break
-        }
-    }
-
-    private var tabView: some View {
-        TabView(selection: $selection) {
-            Tab(value: VaultTab.portfolio) {
-                NavigationStack {
-                    PortfolioView(
-                        viewModel: portfolioVM,
-                        onOpenAI: { showAI = true }
-                    )
-                }
-            } label: {
-                Label("Portfolio", systemImage: "chart.pie.fill")
-            }
-            Tab(value: VaultTab.paper) {
-                NavigationStack {
-                    PaperTradingView(
-                        viewModel: paperVM,
-                        onOpenAI: { showAI = true }
-                    )
-                }
-            } label: {
-                Label("Paper Trading", systemImage: "chart.line.text.clipboard")
-            }
-            Tab(value: VaultTab.watchlist) {
-                NavigationStack {
-                    WatchlistView()
-                }
-            } label: {
-                Label("Watchlist", systemImage: "star")
-            }
-            Tab(value: VaultTab.settings) {
-                NavigationStack {
-                    SettingsView(settings: settings, paperVM: paperVM)
-                }
-            } label: {
-                Label("Settings", systemImage: "gearshape")
-            }
-        }
-        .modify {
-            if #available(iOS 26.0, *) {
-                $0.tabBarMinimizeBehavior(.onScrollDown)
-            } else {
-                $0
-            }
         }
     }
 }

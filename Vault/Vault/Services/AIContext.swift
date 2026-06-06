@@ -17,6 +17,7 @@ struct HoldingDigest: Sendable {
     let sector: String
     let shares: Double
     let purchasePrice: Double
+    let currentPrice: Double
     let purchaseDate: Date
     let costBasis: Double
     let currentValue: Double
@@ -32,6 +33,7 @@ struct HoldingDigest: Sendable {
         sector = h.sector
         shares = h.shares
         purchasePrice = h.purchasePricePerShare
+        currentPrice = h.currentPrice
         purchaseDate = h.purchaseDate
         costBasis = h.costBasis
         currentValue = h.currentValue
@@ -48,6 +50,7 @@ struct HoldingDigest: Sendable {
         sector = p.sector
         shares = p.shares
         purchasePrice = p.averageCost
+        currentPrice = p.currentPrice
         purchaseDate = p.lastUpdated
         costBasis = p.costBasis
         currentValue = p.currentValue
@@ -88,14 +91,11 @@ enum AIContext {
 
     private static func instructionBlock() -> String {
         """
-        You are a sharp, concise portfolio analyst inside an iPad investing app called Vault. Use ONLY the data and news provided below — do not invent figures or events. You are not a fortune teller: never predict prices or give guaranteed buy/sell signals; give balanced, reasoned considerations.
+        You are a sharp, concise portfolio analyst inside an iPad investing app called Vault. The user's full PORTFOLIO DATA and recent NEWS are provided below — treat them as the complete, authoritative context for the whole conversation. Ground EVERY answer strictly in those figures and headlines: quote the actual numbers (values, prices, P&L, sector weights) and cite specific headlines by name. Never invent figures or events, and if the data doesn't cover something, say so rather than guessing. You are not a fortune teller: don't predict prices or give guaranteed buy/sell signals — give balanced, reasoned considerations.
 
-        Reply in clear plain prose (no markdown headers) covering, in order:
-        1) Overall commentary on the portfolio's health and recent performance, referencing the news where relevant.
-        2) A concentration / diversification risk assessment (note the sector weights).
-        3) The single biggest risk right now, citing a specific recent headline if available.
-        4) One concrete, actionable suggestion.
-        Keep it tight and specific. End with one line exactly: "Not financial advice."
+        Answer the user's actual question directly and specifically using this data. If they ask for a general review or "what do you think about my portfolio", cover, in order: overall health and recent performance (referencing the news); concentration / diversification risk (cite the sector weights); the single biggest risk right now (cite a specific recent headline if available); and one concrete, actionable suggestion.
+
+        Reply in clear plain prose (no markdown headers). Keep it tight and specific. End every reply with one line exactly: "Not financial advice."
         """
     }
 
@@ -120,7 +120,7 @@ enum AIContext {
         lines.append("HOLDINGS:")
         let df = DateFormatter(); df.dateFormat = "d MMM yyyy"
         for d in digests {
-            lines.append("- \(d.ticker) (\(d.name), \(d.sector)): \(Int(d.shares)) shares bought \(df.string(from: d.purchaseDate)) @ \(Money.currency(d.purchasePrice, currency: currency)); cost basis \(Money.currency(d.costBasis, currency: currency)) (incl. FX \(Money.currency(d.fxCharge, currency: currency)) + fee \(Money.currency(d.brokerFee, currency: currency))); now \(Money.currency(d.currentValue, currency: currency)); return \(Money.percent(d.returnPercent)), annualised \(Money.percent(d.annualisedReturn)).")
+            lines.append("- \(d.ticker) (\(d.name), \(d.sector)): \(Int(d.shares)) shares bought \(df.string(from: d.purchaseDate)) @ \(Money.currency(d.purchasePrice, currency: currency)); cost basis \(Money.currency(d.costBasis, currency: currency)) (incl. FX \(Money.currency(d.fxCharge, currency: currency)) + fee \(Money.currency(d.brokerFee, currency: currency))); current price \(Money.currency(d.currentPrice, currency: currency)), position value \(Money.currency(d.currentValue, currency: currency)); return \(Money.percent(d.returnPercent)), annualised \(Money.percent(d.annualisedReturn)).")
             if let items = news[d.ticker], !items.isEmpty {
                 for n in items {
                     lines.append("    • news: \(n.headline) (\(n.source), \(n.date.formatted(date: .abbreviated, time: .omitted)))")

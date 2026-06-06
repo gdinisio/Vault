@@ -2,7 +2,7 @@
 //  PaperPositionRowView.swift
 //  Vault
 //
-//  An open paper position card — same visual style as a portfolio holding.
+//  An open paper position card — compact to fit the split-view detail column.
 //
 
 import SwiftUI
@@ -14,39 +14,55 @@ struct PaperPositionRowView: View {
     private var up: Bool { position.profitLoss >= 0 }
 
     var body: some View {
-        HStack(spacing: 15) {
-            TickerMark(ticker: position.ticker, sector: position.sector, size: 44)
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 12) {
+            TickerMark(ticker: position.ticker, sector: position.sector, size: 40)
+
+            VStack(alignment: .leading, spacing: 1) {
                 Text(position.ticker)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.ink)
                 Text("\(Int(position.shares)) sh @ \(Money.currency(position.averageCost, currency: currency))")
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.caption2)
+                    .monospacedDigit()
                     .foregroundStyle(Theme.inkDim)
+                    .lineLimit(1)
             }
-            Spacer()
+            .frame(minWidth: 60, maxWidth: 120, alignment: .leading)
+
             TickerSparkline(symbol: position.ticker, fallbackUp: up)
-                .frame(width: 84, height: 30)
-            VStack(alignment: .trailing, spacing: 2) {
+                .frame(maxWidth: .infinity)
+                .frame(height: 28)
+
+            VStack(alignment: .trailing, spacing: 1) {
                 Text(Money.currency(position.currentValue, currency: currency))
-                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
                     .foregroundStyle(Theme.ink)
-                Text("\(Money.percent(position.returnPercent)) · \(Money.signed(position.profitLoss, currency: currency))")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(up ? Theme.gain : Theme.loss)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                HStack(spacing: 4) {
+                    Text(Money.percent(position.returnPercent))
+                    Text(Money.signed(position.profitLoss, currency: currency))
+                }
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(up ? Theme.gain : Theme.loss)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
             }
-            .frame(width: 150, alignment: .trailing)
+            .frame(minWidth: 70, maxWidth: 110, alignment: .trailing)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
-        .contentCard(cornerRadius: 22)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .contentCard(cornerRadius: 18)
     }
 }
 
 #Preview {
     ZStack {
         VaultBackground(performance: 0.3)
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             PaperPositionRowView(position: MockData.positions[0])
             PaperPositionRowView(position: MockData.positions[1])
         }

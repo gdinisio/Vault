@@ -15,16 +15,19 @@ final class WatchItem {
     var companyName: String
     var sector: String
     var addedDate: Date
+    var listName: String
 
     init(id: UUID = UUID(),
          ticker: String,
          companyName: String,
          sector: String = "Technology",
-         addedDate: Date = .now) {
+         addedDate: Date = .now,
+         listName: String = "Watchlist") {
         self.id = id
         self.ticker = ticker
         self.companyName = companyName
         self.sector = sector
         self.addedDate = addedDate
+        self.listName = listName
     }
 }

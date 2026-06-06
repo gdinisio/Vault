@@ -2,22 +2,24 @@
 //  PaperPositionDetailView.swift
 //  Vault
 //
-//  Detail sheet for an open paper position — value, live price chart, AI
-//  analysis and a breakdown of cost basis and P&L. Mirrors HoldingDetailView
-//  so paper positions feel just like real holdings.
+//  Pushed detail for an open paper position — value, live price chart, AI
+//  analysis and a breakdown of cost basis and P&L. Sell is hosted here as a
+//  sheet (no longer needs to route through the parent).
 //
 
 import SwiftUI
+import SwiftData
 
 struct PaperPositionDetailView: View {
     let position: PaperPosition
     var currency: DisplayCurrency = .gbp
-    /// Asks the parent to open the Sell sheet (the parent dismisses this first,
-    /// so we never read a position that selling may have deleted).
-    var onSell: () -> Void = {}
+    @Bindable var viewModel: PaperTradingViewModel
+    let positions: [PaperPosition]
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @State private var showAnalysis = false
+    @State private var showSell = false
 
     private var up: Bool { position.profitLoss >= 0 }
 
@@ -34,7 +36,6 @@ struct PaperPositionDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
@@ -60,14 +61,12 @@ struct PaperPositionDetailView: View {
             .padding(28)
         }
         .background(Theme.bgDeep.opacity(0.001))
+        .navigationTitle(position.ticker)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Done") { dismiss() }
-            }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { Haptics.impact(.rigid); onSell() } label: {
-                    Label("Sell", systemImage: "arrow.down.right")
+                Button { Haptics.impact(.rigid); showSell = true } label: {
+                    Image(systemName: "arrow.down.right")
                 }
                 .buttonStyle(.glassProminent)
                 .tint(Theme.lossButton)
@@ -76,11 +75,12 @@ struct PaperPositionDetailView: View {
         .sheet(isPresented: $showAnalysis) {
             StockAnalysisView(snapshot: snapshot, currency: currency)
         }
+        .sheet(isPresented: $showSell) {
+            SellView(viewModel: viewModel, positions: positions, currency: currency)
         }
-        .presentationBackground(.ultraThickMaterial)
-        .presentationCornerRadius(Theme.sheetRadius)
-        .presentationDetents([.large, .medium])
     }
+
+    // MARK: Header
 
     private var header: some View {
         HStack(spacing: 16) {
@@ -162,7 +162,12 @@ struct PaperPositionDetailView: View {
 }
 
 #Preview {
-    Color.black.sheet(isPresented: .constant(true)) {
-        PaperPositionDetailView(position: MockData.positions[0])
+    NavigationStack {
+        PaperPositionDetailView(
+            position: MockData.positions[0],
+            viewModel: PaperTradingViewModel(),
+            positions: MockData.positions
+        )
     }
+    .modelContainer(MockData.previewContainer())
 }

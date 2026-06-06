@@ -22,31 +22,39 @@ struct WatchRowView: View {
     private var up: Bool { (change ?? 0) >= 0 }
 
     var body: some View {
-        HStack(spacing: 15) {
-            TickerMark(ticker: item.ticker, sector: item.sector, size: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.ticker).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
-                Text(item.companyName).font(.system(size: 12.5)).foregroundStyle(Theme.inkDim).lineLimit(1)
+        HStack(spacing: 12) {
+            TickerMark(ticker: item.ticker, sector: item.sector, size: 40)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.ticker).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink)
+                Text(item.companyName).font(.caption2).foregroundStyle(Theme.inkDim).lineLimit(1)
             }
-            Spacer()
+            .frame(minWidth: 60, maxWidth: 120, alignment: .leading)
+
             SparklineView(
                 points: hasData ? closes : Spark.series(seed: Double(abs(item.ticker.hashValue % 997)), count: 20, trendingUp: up),
                 color: up ? Theme.gain : Theme.loss
             )
             .opacity(hasData ? 1 : 0.5)
-            .frame(width: 92, height: 30)
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: 1) {
                 Text(last.map { Money.currency($0, currency: currency) } ?? "—")
-                    .font(.system(size: 16, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1).minimumScaleFactor(0.8)
                 Text(change.map { "\(Money.percent($0)) · 1M" } ?? " ")
-                    .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
                     .foregroundStyle(up ? Theme.gain : Theme.loss)
+                    .lineLimit(1).minimumScaleFactor(0.75)
             }
-            .frame(width: 120, alignment: .trailing)
+            .frame(minWidth: 70, maxWidth: 110, alignment: .trailing)
         }
-        .padding(.horizontal, 18).padding(.vertical, 14)
-        .contentCard(cornerRadius: 22)
+        .padding(.horizontal, 14).padding(.vertical, 11)
+        .contentCard(cornerRadius: 18)
         .task(id: item.ticker) { await load() }
     }
 
