@@ -24,20 +24,28 @@ struct AddWatchView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkDim)
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass").font(.system(size: 16)).foregroundStyle(Theme.inkDim)
                     TextField("Search ticker or company…", text: $query)
                         .textFieldStyle(.plain)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.characters)
+                        .font(.system(size: 16, design: .monospaced))
                         .foregroundStyle(Theme.ink)
                         .onChange(of: query) { _, v in scheduleSearch(v) }
-                    if searching { ProgressView().controlSize(.small) }
+                    if searching {
+                        ProgressView().controlSize(.small)
+                    } else if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 16)).foregroundStyle(Theme.inkFaint)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .padding(.horizontal, 16).padding(.vertical, 13)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Theme.line.opacity(0.06))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.line.opacity(0.12), lineWidth: 0.5)))
+                .padding(.horizontal, 16)
+                .frame(height: 48)
+                .glassEffect(.regular, in: .capsule)
                 .padding(.horizontal, 30)
                 .padding(.top, 8)
 
@@ -60,7 +68,8 @@ struct AddWatchView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Cancel")
                 }
             }
         }
@@ -72,7 +81,6 @@ struct AddWatchView: View {
     private func row(_ r: AddHoldingView.SymbolResult) -> some View {
         let already = existing.contains(r.symbol)
         return HStack(spacing: 12) {
-            TickerMark(ticker: r.symbol, sector: r.sector, size: 38)
             VStack(alignment: .leading, spacing: 1) {
                 Text(r.symbol).font(.system(size: 15, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
                 Text(r.name).font(.system(size: 12.5)).foregroundStyle(Theme.inkDim).lineLimit(1)

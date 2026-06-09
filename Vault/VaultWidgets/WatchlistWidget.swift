@@ -17,7 +17,7 @@ struct WatchlistWidget: Widget {
         StaticConfiguration(kind: kind, provider: SnapshotProvider()) { entry in
             WatchlistWidgetView(entry: entry)
                 .widgetURL(URL(string: "vault://watchlist"))
-                .containerBackground(for: .widget) { Theme.bgDeep }
+                .containerBackground(for: .widget) { WidgetBackground() }
         }
         .configurationDisplayName("Watchlist")
         .description("Your holdings and watched tickers at a glance.")
@@ -105,17 +105,29 @@ private struct TickerRow: View {
                 .frame(maxWidth: .infinity, maxHeight: 24)
 
             // Price + change
-            VStack(alignment: .trailing, spacing: 1) {
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(card.priceText)
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1).minimumScaleFactor(0.8)
-                Text(card.changeText)
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(tint)
+                WidgetChangePill(text: card.changeText, up: card.up)
             }
-            .frame(width: 80, alignment: .trailing)
+            .frame(width: 84, alignment: .trailing)
         }
         .padding(.vertical, 6)
     }
+}
+
+// MARK: - Previews
+
+#Preview("Medium", as: .systemMedium) {
+    WatchlistWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
+}
+
+#Preview("Large", as: .systemLarge) {
+    WatchlistWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
 }

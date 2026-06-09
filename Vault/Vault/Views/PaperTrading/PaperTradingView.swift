@@ -34,13 +34,18 @@ struct PaperTradingView: View {
     var body: some View {
         GeometryReader { geo in
             let portrait = geo.size.height > geo.size.width
-            VStack(alignment: .leading, spacing: 0) {
-                equityBand(portrait: portrait)
-                    .padding(.top, portrait ? 6 : 10)
-                    .padding(.bottom, portrait ? 16 : 22)
-                content(portrait: portrait)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    equityBand(portrait: portrait)
+                        .padding(.top, portrait ? 6 : 10)
+                        .padding(.bottom, portrait ? 16 : 22)
+                    content(portrait: portrait)
+                }
+                .vaultPagePadding()
             }
-            .vaultPagePadding()
+            .scrollIndicators(.hidden)
+            .scrollEdgeEffectStyle(.soft, for: .top)
+            .refreshable { await viewModel.refreshPrices(for: positions) }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle("Paper Trading")
@@ -73,21 +78,26 @@ struct PaperTradingView: View {
             }
             .disabled(viewModel.isRefreshing)
         }
-        // Trailing: primary tools (AI + Buy) — prominent, each its own capsule.
+        // Trailing: primary tools (AI + Buy).
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: onOpenAI) {
                 Image(systemName: "sparkles")
             }
-            .buttonStyle(.glassProminent)
-            .tint(Theme.aiPurpleButton)
         }
         ToolbarSpacer(.fixed, placement: .topBarTrailing)
         ToolbarItem(placement: .topBarTrailing) {
             Button { showBuy = true } label: {
                 Image(systemName: "plus")
             }
-            .buttonStyle(.glassProminent)
-            .tint(Theme.gainButton)
+            .accessibilityLabel("Buy")
+        }
+        if !positions.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showSell = true } label: {
+                    Image(systemName: "minus")
+                }
+                .accessibilityLabel("Sell")
+            }
         }
     }
 
@@ -149,41 +159,31 @@ struct PaperTradingView: View {
         }
     }
 
-    // MARK: Content (orientation-adaptive, scrollable)
+    // MARK: Content (orientation-adaptive)
 
+    /// All children flow inline — the outer ScrollView owns scrolling so the
+    /// trade history grows with its content rather than scrolling independently.
     @ViewBuilder
     private func content(portrait: Bool) -> some View {
         if portrait {
-            // Single column: everything scrolls together.
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    positionsSection
-                    equityCurve.frame(height: 200)
-                    TradeHistoryView(trades: trades, currency: currency, scrolls: false)
-                }
-                .padding(.bottom, 8)
+            VStack(alignment: .leading, spacing: 22) {
+                positionsSection
+                equityCurve.frame(height: 200)
+                TradeHistoryView(trades: trades, currency: currency, scrolls: false)
             }
-            .scrollIndicators(.hidden)
-            .refreshable { await viewModel.refreshPrices(for: positions) }
+            .padding(.bottom, 8)
         } else {
-            // Two columns: left scrolls (positions + equity curve), right is the
-            // self-scrolling trade history.
             HStack(alignment: .top, spacing: 22) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        positionsSection
-                        equityCurve.frame(height: 210)
-                    }
-                    .padding(.bottom, 4)
+                VStack(alignment: .leading, spacing: 18) {
+                    positionsSection
+                    equityCurve.frame(height: 210)
                 }
-                .scrollIndicators(.hidden)
-                .refreshable { await viewModel.refreshPrices(for: positions) }
                 .frame(maxWidth: .infinity)
 
-                TradeHistoryView(trades: trades, currency: currency)
+                TradeHistoryView(trades: trades, currency: currency, scrolls: false)
                     .frame(width: 396)
             }
-            .frame(maxHeight: .infinity)
+            .padding(.bottom, 4)
         }
     }
 
@@ -192,28 +192,24 @@ struct PaperTradingView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Open positions").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
                 Spacer()
-                HStack(spacing: 14) {
-                    Text("\(positions.count) open").font(.system(size: 14, design: .monospaced)).foregroundStyle(Theme.inkDim)
-                    if !positions.isEmpty {
-                        Button { showSell = true } label: {
-                            Text("Sell").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.loss)
-                                .padding(.horizontal, 14).padding(.vertical, 6)
-                                .background(Capsule().fill(Theme.loss.opacity(0.15)))
-                        }.buttonStyle(.plain)
-                    }
-                }
+                Text("\(positions.count) open").font(.system(size: 14, design: .monospaced)).foregroundStyle(Theme.inkDim)
             }
             .padding(.horizontal, 4)
 
             if positions.isEmpty {
                 emptyPositions
             } else {
-                VStack(spacing: 12) {
-                    ForEach(sortedPositions) { position in
+                VStack(spacing: 0) {
+                    ForEach(Array(sortedPositions.enumerated()), id: \.element.id) { index, position in
                         NavigationLink(value: position) {
                             PaperPositionRowView(position: position, currency: currency)
+                                .padding(.horizontal, 12)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressableRowStyle())
+
+                        if index < sortedPositions.count - 1 {
+                            Divider().padding(.leading, 12)
+                        }
                     }
                 }
             }

@@ -12,7 +12,20 @@
 		<key>VaultWidgetsExtension.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>0</integer>
+			<integer>1</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>164F4F142FD2CEB30023AFC8</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>168CF3572FD06D9B00A808B8</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

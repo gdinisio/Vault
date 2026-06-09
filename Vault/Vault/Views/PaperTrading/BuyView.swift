@@ -13,6 +13,8 @@ struct BuyView: View {
     @Bindable var viewModel: PaperTradingViewModel
     let positions: [PaperPosition]
     var currency: DisplayCurrency = .gbp
+    /// When set, the buy form opens with this ticker already chosen.
+    var preselect: AddHoldingView.SymbolResult? = nil
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -26,8 +28,9 @@ struct BuyView: View {
     @State private var placed = false
     @State private var searchTask: Task<Void, Never>?
 
-    private let fee = 1.50
-    private var cost: Double { Double(shares) * price + fee }
+    private var gross: Double { Double(shares) * price }
+    private var fee: Double { gross * PaperTradingViewModel.feeRate }
+    private var cost: Double { gross + fee }
     private var canBuy: Bool { selected != nil && shares > 0 && price > 0 }
 
     var body: some View {
@@ -42,13 +45,19 @@ struct BuyView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    if !placed { Button("Cancel") { dismiss() } }
+                    if !placed {
+                        Button { dismiss() } label: { Image(systemName: "xmark") }
+                            .accessibilityLabel("Cancel")
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if placed {
                         Button("Done") { dismiss() }
+                            .buttonStyle(.glassProminent)
+                            .tint(Theme.accentButton)
                     } else {
-                        Button("Buy") { placeOrder() }
+                        Button { placeOrder() } label: { Image(systemName: "checkmark") }
+                            .accessibilityLabel("Buy")
                             .buttonStyle(.glassProminent)
                             .tint(Theme.gainButton)
                             .disabled(!canBuy)
@@ -60,56 +69,21 @@ struct BuyView: View {
         .presentationCornerRadius(Theme.sheetRadius)
         .presentationDetents([.medium, .large])
         .sensoryFeedback(.success, trigger: placed)
+        .task {
+            if let preselect, selected == nil { pick(preselect) }
+        }
     }
 
     // MARK: Form
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 18) {
-            // search
+            // search / selected ticker
             VStack(alignment: .leading, spacing: 8) {
                 Text("Ticker").vaultLabel()
-                HStack(spacing: 12) {
-                    if let selected {
-                        TickerMark(ticker: selected.symbol, sector: selected.sector, size: 36)
-                    } else {
-                        Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkDim)
-                    }
-                    TextField("Search ticker…", text: $query)
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.characters)
-                        .font(.system(size: 17, design: .monospaced))
-                        .foregroundStyle(Theme.ink)
-                        .onChange(of: query) { _, v in scheduleSearch(v) }
-                    if price > 0 {
-                        Text(Money.currency(price, currency: currency))
-                            .font(.system(size: 16, design: .monospaced)).foregroundStyle(Theme.inkSoft)
-                    }
-                }
-                .padding(.horizontal, 15).padding(.vertical, 12)
-                .fieldBox()
-
-                if !results.isEmpty {
-                    VStack(spacing: 4) {
-                        ForEach(results) { r in
-                            Button { pick(r) } label: {
-                                HStack(spacing: 12) {
-                                    TickerMark(ticker: r.symbol, sector: r.sector, size: 32)
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(r.symbol).font(.system(size: 14, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
-                                        Text(r.name).font(.system(size: 12)).foregroundStyle(Theme.inkDim).lineLimit(1)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 10).padding(.vertical, 8)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(6)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(.ultraThickMaterial))
+                searchBar
+                if selected == nil && !results.isEmpty {
+                    resultsList
                 }
             }
 
@@ -125,7 +99,7 @@ struct BuyView: View {
             }
 
             VStack(spacing: 6) {
-                summaryRow("Est. cost (incl. \(Money.currency(fee, currency: currency)) fee)",
+                summaryRow("Est. cost (incl. 1% fee)",
                            Money.currency(cost, currency: currency), emphasised: true)
                 summaryRow("Available virtual cash", Money.currency(viewModel.cash, currency: currency))
             }
@@ -151,6 +125,78 @@ struct BuyView: View {
 
     // MARK: Pieces
 
+    /// One fixed-height liquid-glass bar serving both the search and selected
+    /// states, so choosing a ticker never changes the layout height.
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: selected != nil ? "checkmark.circle.fill" : "magnifyingglass")
+                .font(.system(size: 16))
+                .foregroundStyle(selected != nil ? Theme.gain : Theme.inkDim)
+
+            if let selected {
+                Text(selected.symbol)
+                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Theme.ink)
+                Text(selected.name)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.inkDim)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                if price > 0 {
+                    Text(Money.currency(price, currency: currency))
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Theme.inkSoft)
+                }
+            } else {
+                TextField("Search ticker…", text: $query)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+                    .font(.system(size: 16, design: .monospaced))
+                    .foregroundStyle(Theme.ink)
+                    .onChange(of: query) { _, v in scheduleSearch(v) }
+                Spacer(minLength: 0)
+            }
+
+            if selected != nil || !query.isEmpty {
+                Button { clearSelection() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 48)
+        .glassEffect(.regular, in: .capsule)
+    }
+
+    private var resultsList: some View {
+        VStack(spacing: 4) {
+            ForEach(results) { r in
+                Button { pick(r) } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(r.symbol).font(.system(size: 14, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
+                            Text(r.name).font(.system(size: 12)).foregroundStyle(Theme.inkDim).lineLimit(1)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .background(RoundedRectangle(cornerRadius: 16).fill(.ultraThickMaterial))
+    }
+
+    private func clearSelection() {
+        selected = nil; query = ""; price = 0; results = []; inlineError = nil
+    }
+
     private func summaryRow(_ label: String, _ value: String, emphasised: Bool = false) -> some View {
         HStack {
             Text(label).font(.system(size: 14)).foregroundStyle(Theme.inkDim)
@@ -162,9 +208,12 @@ struct BuyView: View {
     // MARK: Actions
 
     private func scheduleSearch(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        // Keep the active selection while the field still shows its symbol
+        // (setting `query` in pick() would otherwise clear it via this handler).
+        if let selected, trimmed == selected.symbol { results = []; return }
         selected = nil; price = 0; inlineError = nil
         searchTask?.cancel()
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { results = []; return }
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(280))

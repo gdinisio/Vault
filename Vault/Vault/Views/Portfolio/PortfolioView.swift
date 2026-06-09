@@ -34,27 +34,22 @@ struct PortfolioView: View {
             if holdings.isEmpty {
                 emptyState
                     .vaultPagePadding()
-            } else if portrait {
-                // Portrait: whole page scrolls; holdings list sizes to its rows.
+            } else {
+                // The whole page scrolls in both orientations — inner List
+                // sizes to its rows so nothing is clipped at the bottom and the
+                // page owns scrolling end-to-end.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        heroBand(portrait: true)
-                            .padding(.top, 6)
-                            .padding(.bottom, 16)
-                        content(portrait: true)
+                        heroBand(portrait: portrait)
+                            .padding(.top, portrait ? 6 : 10)
+                            .padding(.bottom, portrait ? 16 : 22)
+                        content(portrait: portrait)
                     }
                     .vaultPagePadding()
                 }
                 .scrollIndicators(.hidden)
-            } else {
-                // Landscape: fixed two-column layout, columns fill the height.
-                VStack(alignment: .leading, spacing: 0) {
-                    heroBand(portrait: false)
-                        .padding(.top, 10)
-                        .padding(.bottom, 22)
-                    content(portrait: false)
-                }
-                .vaultPagePadding()
+                .scrollEdgeEffectStyle(.soft, for: .top)
+                .refreshable { await viewModel.refreshPrices(for: holdings) }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -87,21 +82,17 @@ struct PortfolioView: View {
             }
             .disabled(viewModel.isRefreshing)
         }
-        // Trailing: primary tools (AI + Add) — prominent, each its own capsule.
+        // Trailing: primary tools (AI + Add).
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: onOpenAI) {
                 Image(systemName: "sparkles")
             }
-            .buttonStyle(.glassProminent)
-            .tint(Theme.aiPurpleButton)
         }
         ToolbarSpacer(.fixed, placement: .topBarTrailing)
         ToolbarItem(placement: .topBarTrailing) {
             Button { showAddSheet = true } label: {
                 Image(systemName: "plus")
             }
-            .buttonStyle(.glassProminent)
-            .tint(Theme.gainButton)
         }
     }
 
@@ -169,7 +160,7 @@ struct PortfolioView: View {
         Group {
             if portrait {
                 VStack(alignment: .leading, spacing: 22) {
-                    holdingsColumn(portrait: true)
+                    holdingsColumn
                     AllocationCardView(slices: viewModel.allocations(for: holdings), currency: currency)
                         .frame(maxWidth: .infinity)
                 }
@@ -177,24 +168,22 @@ struct PortfolioView: View {
                 HStack(alignment: .top, spacing: 22) {
                     AllocationCardView(slices: viewModel.allocations(for: holdings), currency: currency)
                         .frame(width: 408)
-                    holdingsColumn(portrait: false)
+                    holdingsColumn
                         .frame(maxWidth: .infinity)
                 }
-                .frame(maxHeight: .infinity)
             }
         }
         // Rebuild when the live FX rate lands so rows + allocation use it too.
         .id(settings.fxToken)
     }
 
-    /// Approximate rendered height of one holding row (content + list insets).
-    private let holdingRowHeight: CGFloat = 76
+    /// Approximate rendered height of one holding row (content + separator).
+    private let holdingRowHeight: CGFloat = 68
 
-    private func holdingsColumn(portrait: Bool) -> some View {
-        // Portrait: the list is exactly as tall as its rows, up to 5; beyond
-        // that it caps and scrolls internally. Landscape: fills the column.
-        let visibleRows = min(holdings.count, 5)
-        let portraitHeight = CGFloat(visibleRows) * holdingRowHeight
+    /// Holdings list sized to its rows so the outer ScrollView owns scrolling
+    /// in both orientations — no clipping, no nested scroll-gesture fight.
+    private var holdingsColumn: some View {
+        let listHeight = CGFloat(holdings.count) * holdingRowHeight
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
@@ -209,9 +198,8 @@ struct PortfolioView: View {
                     NavigationLink(value: holding) {
                         HoldingRowView(holding: holding, currency: currency)
                     }
-                    .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
                     .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             Haptics.impact(.rigid)
@@ -223,14 +211,8 @@ struct PortfolioView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
-            // Portrait needs a *fixed* height (not maxHeight) or the List
-            // collapses inside the surrounding ScrollView.
-            .modify {
-                if portrait { $0.frame(height: portraitHeight) }
-                else { $0.frame(maxHeight: .infinity) }
-            }
-            .scrollDisabled(portrait && holdings.count <= 5)
-            .refreshable { await viewModel.refreshPrices(for: holdings) }
+            .scrollDisabled(true)
+            .frame(height: listHeight)
         }
     }
 

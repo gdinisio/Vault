@@ -43,13 +43,19 @@ struct SellView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    if !sold { Button("Cancel") { dismiss() } }
+                    if !sold {
+                        Button { dismiss() } label: { Image(systemName: "xmark") }
+                            .accessibilityLabel("Cancel")
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if sold {
                         Button("Done") { dismiss() }
+                            .buttonStyle(.glassProminent)
+                            .tint(Theme.accentButton)
                     } else if !positions.isEmpty {
-                        Button("Sell") { sell() }
+                        Button { sell() } label: { Image(systemName: "checkmark") }
+                            .accessibilityLabel("Sell")
                             .buttonStyle(.glassProminent)
                             .tint(Theme.lossButton)
                             .disabled(!canSell)
@@ -86,20 +92,24 @@ struct SellView: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 12) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16)).foregroundStyle(Theme.gain)
                             if let selected {
-                                TickerMark(ticker: selected.ticker, sector: selected.sector, size: 36)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(selected.ticker).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
-                                    Text("\(Int(selected.shares)) sh @ \(Money.currency(selected.currentPrice, currency: currency))")
-                                        .font(.system(size: 12.5, design: .monospaced)).foregroundStyle(Theme.inkDim)
-                                }
+                                Text(selected.ticker)
+                                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Theme.ink)
+                                Text("\(Int(selected.shares)) sh @ \(Money.currency(selected.currentPrice, currency: currency))")
+                                    .font(.system(size: 13, design: .monospaced))
+                                    .foregroundStyle(Theme.inkDim)
+                                    .lineLimit(1)
                             }
-                            Spacer()
+                            Spacer(minLength: 8)
                             Image(systemName: "chevron.up.chevron.down").font(.system(size: 13)).foregroundStyle(Theme.inkDim)
                         }
-                        .padding(.horizontal, 15).padding(.vertical, 11)
-                        .fieldBoxSell()
+                        .padding(.horizontal, 16)
+                        .frame(height: 48)
+                        .glassEffect(.regular, in: .capsule)
                     }
                 }
 

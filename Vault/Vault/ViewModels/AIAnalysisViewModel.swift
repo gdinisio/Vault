@@ -62,11 +62,17 @@ final class AIAnalysisViewModel {
         didPrepare = true
     }
 
-    /// Fetch per-holding news and build the rich system prompt (once).
+    /// Fetch per-holding news + price performance and build the rich system
+    /// prompt (once).
     func loadContext() async {
         guard !contextLoaded, !digests.isEmpty else { return }
-        let news = await AIContext.fetchNews(for: digests.map(\.ticker))
-        systemPrompt = AIContext.portfolioSystemPrompt(digests: digests, summary: summaryData, currency: currency, news: news)
+        let tickers = digests.map(\.ticker)
+        async let newsTask = AIContext.fetchNews(for: tickers)
+        async let perfTask = AIContext.performance(for: tickers)
+        let news = await newsTask
+        let perf = await perfTask
+        systemPrompt = AIContext.portfolioSystemPrompt(digests: digests, summary: summaryData,
+                                                       currency: currency, news: news, perf: perf)
         contextLoaded = true
     }
 

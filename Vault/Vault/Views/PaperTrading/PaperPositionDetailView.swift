@@ -20,6 +20,7 @@ struct PaperPositionDetailView: View {
     @Environment(\.modelContext) private var context
     @State private var showAnalysis = false
     @State private var showSell = false
+    @State private var showBuy = false
 
     private var up: Bool { position.profitLoss >= 0 }
 
@@ -38,10 +39,8 @@ struct PaperPositionDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                header
                 valueBlock
                 PriceChartView(symbol: position.ticker, sector: position.sector, currency: currency)
-                analyseButton
 
                 section("Position") {
                     detailRow("Shares", "\(Int(position.shares))")
@@ -52,24 +51,29 @@ struct PaperPositionDetailView: View {
                     detailRow("Current value", Money.currency(position.currentValue, currency: currency), emphasised: true)
                 }
 
-                section("Performance") {
+                section("Performance", footnote: "Last updated \(position.lastUpdated.formatted(date: .abbreviated, time: .shortened)).") {
                     detailRow("Profit / loss", Money.signed(position.profitLoss, currency: currency), tint: up ? Theme.gain : Theme.loss)
                     detailRow("Return", Money.percent(position.returnPercent), tint: up ? Theme.gain : Theme.loss)
-                    detailRow("Last updated", position.lastUpdated.formatted(date: .abbreviated, time: .shortened))
                 }
             }
             .padding(28)
         }
         .background(Theme.bgDeep.opacity(0.001))
         .navigationTitle(position.ticker)
+        .navigationSubtitle(position.companyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { Haptics.impact(.rigid); showSell = true } label: {
-                    Image(systemName: "arrow.down.right")
+                Button { Haptics.impact(.light); showAnalysis = true } label: {
+                    Label("Analyse with AI", systemImage: "sparkles")
                 }
-                .buttonStyle(.glassProminent)
-                .tint(Theme.lossButton)
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Buy") { Haptics.impact(.light); showBuy = true }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Sell") { Haptics.impact(.rigid); showSell = true }
             }
         }
         .sheet(isPresented: $showAnalysis) {
@@ -78,22 +82,11 @@ struct PaperPositionDetailView: View {
         .sheet(isPresented: $showSell) {
             SellView(viewModel: viewModel, positions: positions, currency: currency)
         }
-    }
-
-    // MARK: Header
-
-    private var header: some View {
-        HStack(spacing: 16) {
-            TickerMark(ticker: position.ticker, sector: position.sector, size: 56)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(position.ticker)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                Text(position.companyName)
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.inkDim)
-            }
-            Spacer()
+        .sheet(isPresented: $showBuy) {
+            BuyView(viewModel: viewModel, positions: positions, currency: currency,
+                    preselect: AddHoldingView.SymbolResult(
+                        symbol: position.ticker, name: position.companyName,
+                        sector: position.sector, price: position.currentPrice))
         }
     }
 
@@ -113,38 +106,22 @@ struct PaperPositionDetailView: View {
         .contentCard()
     }
 
-    private var analyseButton: some View {
-        Button { Haptics.impact(.light); showAnalysis = true } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles").foregroundStyle(Theme.aiPurple)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Analyse with AI")
-                        .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
-                    Text("News-driven read on \(position.ticker) — hold, trim or add")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.inkDim)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkDim)
-            }
-            .padding(.horizontal, 18).padding(.vertical, 16)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Theme.aiPurple.opacity(0.14))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.aiPurple.opacity(0.3), lineWidth: 0.5))
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
     // MARK: Building blocks
 
-    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func section(_ title: String, footnote: String? = nil, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title).vaultLabel()
             VStack(spacing: 12) { content() }
                 .padding(20)
                 .contentCard()
+            if let footnote {
+                Text(footnote)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkDim)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 2)
+            }
         }
     }
 

@@ -15,7 +15,9 @@ final class WatchItem {
     var companyName: String
     var sector: String
     var addedDate: Date
-    var listName: String
+    /// Inline default lets SwiftData lightweight-migrate existing stores that
+    /// predate watchlist grouping (backfills old items into the default list).
+    var listName: String = "Watchlist"
 
     init(id: UUID = UUID(),
          ticker: String,

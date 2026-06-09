@@ -23,12 +23,10 @@ struct HoldingDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                header
                 valueBlock
                 PriceChartView(symbol: holding.ticker, sector: holding.sector, currency: currency)
-                analyseButton
 
-                section("Cost basis breakdown") {
+                section("Cost basis breakdown", footnote: feeDragNote) {
                     detailRow("Shares", "\(Int(holding.shares))")
                     detailRow("Purchase price", Money.currency(holding.purchasePricePerShare, currency: currency))
                     detailRow("Shares × price", Money.currency(holding.shares * holding.purchasePricePerShare, currency: currency))
@@ -46,15 +44,20 @@ struct HoldingDetailView: View {
                     detailRow("Annualised return", Money.percent(holding.annualisedReturn), tint: holding.annualisedReturn >= 0 ? Theme.gain : Theme.loss)
                     detailRow("Purchased", holding.purchaseDate.formatted(date: .abbreviated, time: .omitted))
                 }
-
-                feeImpactNote
             }
             .padding(28)
         }
         .background(Theme.bgDeep.opacity(0.001))
         .navigationTitle(holding.ticker)
+        .navigationSubtitle(holding.companyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Haptics.impact(.light); showAnalysis = true } label: {
+                    Label("Analyse with AI", systemImage: "sparkles")
+                }
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button { Haptics.impact(.light); showEdit = true } label: {
@@ -89,45 +92,6 @@ struct HoldingDetailView: View {
         dismiss()
     }
 
-    private var analyseButton: some View {
-        Button { showAnalysis = true } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles").foregroundStyle(Theme.aiPurple)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Analyse with AI")
-                        .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
-                    Text("News-driven read on \(holding.ticker) — hold, trim or add")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.inkDim)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkDim)
-            }
-            .padding(.horizontal, 18).padding(.vertical, 16)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Theme.aiPurple.opacity(0.14))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.aiPurple.opacity(0.3), lineWidth: 0.5))
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var header: some View {
-        HStack(spacing: 16) {
-            TickerMark(ticker: holding.ticker, sector: holding.sector, size: 56)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(holding.ticker)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                Text(holding.companyName)
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.inkDim)
-            }
-            Spacer()
-        }
-    }
-
     private var valueBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Current value").vaultLabel()
@@ -143,33 +107,29 @@ struct HoldingDetailView: View {
         .contentCard()
     }
 
-    private var feeImpactNote: some View {
+    /// Grouped-list footer text explaining the fee drag on entry.
+    private var feeDragNote: String {
         let totalFees = holding.fxCharge + holding.brokerFee
         let dragPct = holding.costBasis > 0 ? totalFees / holding.costBasis * 100 : 0
-        return HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "info.circle")
-                .foregroundStyle(Theme.accent)
-            Text("FX (\(Money.currency(holding.fxCharge, currency: currency))) and broker fees (\(Money.currency(holding.brokerFee, currency: currency))) added \(Money.currency(totalFees, currency: currency)) to your cost basis — a \(String(format: "%.2f", dragPct))% drag on entry.")
-                .font(.system(size: 13.5))
-                .foregroundStyle(Theme.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Theme.line.opacity(0.05))
-        )
+        return "FX (\(Money.currency(holding.fxCharge, currency: currency))) and broker fees (\(Money.currency(holding.brokerFee, currency: currency))) added \(Money.currency(totalFees, currency: currency)) to your cost basis — a \(String(format: "%.2f", dragPct))% drag on entry."
     }
 
     // MARK: Building blocks
 
-    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func section(_ title: String, footnote: String? = nil, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title).vaultLabel()
             VStack(spacing: 12) { content() }
                 .padding(20)
                 .contentCard()
+            if let footnote {
+                Text(footnote)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkDim)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 2)
+            }
         }
     }
 

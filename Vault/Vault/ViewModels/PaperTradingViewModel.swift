@@ -21,6 +21,9 @@ struct PaperSummary {
 @MainActor
 @Observable
 final class PaperTradingViewModel {
+    /// Flat trading commission as a fraction of the order's gross value (1%).
+    static let feeRate = 0.01
+
     var isRefreshing = false
     var toast: Toast?
 
@@ -76,7 +79,7 @@ final class PaperTradingViewModel {
     func buy(ticker: String, companyName: String, sector: String,
              shares: Double, price: Double,
              existing positions: [PaperPosition], in context: ModelContext) -> TradeResult {
-        let cost = shares * price
+        let cost = shares * price * (1 + Self.feeRate)
         guard cost <= cash else { return .insufficientCash }
 
         if let position = positions.first(where: { $0.ticker == ticker }) {

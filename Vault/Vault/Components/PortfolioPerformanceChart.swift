@@ -39,11 +39,16 @@ struct PortfolioPerformanceChart: View {
     }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             chips
-            chartArea
-                .frame(height: 92)
-                .overlay(alignment: .topLeading) { caption }
+            // P/L caption sits right above the chart (almost touching), never on it.
+            VStack(alignment: .leading, spacing: 2) {
+                caption
+                    .frame(height: 30, alignment: .bottomLeading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                chartArea
+                    .frame(height: 92)
+            }
         }
         .task(id: "\(range.rawValue)-\(holdings.count)") { await load() }
     }

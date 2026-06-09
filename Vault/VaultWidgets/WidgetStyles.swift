@@ -26,6 +26,35 @@ func signalColor(_ signal: Double) -> Color {
     signal >= 0 ? Theme.gain : Theme.loss
 }
 
+// MARK: - Neutral widget background
+
+/// Subtle neutral gradient that harmonises widgets with the app's flat, matte
+/// content surfaces (and adapts to light/dark).
+struct WidgetBackground: View {
+    var body: some View {
+        LinearGradient(colors: [Theme.widgetBgTop, Theme.widgetBgBottom],
+                       startPoint: .top, endPoint: .bottom)
+    }
+}
+
+// MARK: - Change pill (mirrors the app's filled ChangePill)
+
+struct WidgetChangePill: View {
+    let text: String
+    let up: Bool
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .bold, design: .monospaced))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2.5)
+            .background(Capsule(style: .continuous).fill(up ? Theme.gain : Theme.loss))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+}
+
 // MARK: - Shared value+change row
 
 struct ValueChangeRow: View {
@@ -36,19 +65,18 @@ struct ValueChangeRow: View {
     var valueFontSize: CGFloat = 28
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(valueText)
                 .font(.system(size: valueFontSize, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Theme.ink)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
+                WidgetChangePill(text: returnPctText, up: signal >= 0)
                 Text(plText)
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
                     .foregroundStyle(signalColor(signal))
-                Text(returnPctText)
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(signalColor(signal))
+                    .lineLimit(1).minimumScaleFactor(0.7)
             }
         }
     }

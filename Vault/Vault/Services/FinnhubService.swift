@@ -38,8 +38,15 @@ nonisolated struct CompanyNews: Decodable, Identifiable, Hashable {
     let source: String
     let url: String
     let datetime: TimeInterval
+    /// Article thumbnail (Finnhub `image`); may be empty.
+    var image: String? = nil
 
     var date: Date { Date(timeIntervalSince1970: datetime) }
+    /// Non-empty thumbnail URL, if any.
+    var imageURL: URL? {
+        guard let image, !image.isEmpty else { return nil }
+        return URL(string: image)
+    }
 }
 
 /// /stock/recommendation trend (one period).

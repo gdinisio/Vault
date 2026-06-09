@@ -24,6 +24,11 @@ struct ContentView: View {
     @State private var selection: VaultTab = .portfolio
     @State private var showAI = false
 
+    /// User-customisable sidebar/tab-bar order. Bound to the native iOS 26
+    /// customisation experience — tapping Edit in the sidebar header lets the
+    /// user reorder and hide tabs; the choices persist across launches.
+    @AppStorage("vault.tabCustomization") private var tabCustomization = TabViewCustomization()
+
     private var currency: DisplayCurrency {
         _ = settings.fxToken
         return settings.displayCurrency
@@ -93,6 +98,8 @@ struct ContentView: View {
             } label: {
                 Label("Portfolio", systemImage: "chart.pie")
             }
+            .customizationID("vault.tab.portfolio")
+            .customizationBehavior(.reorderable, for: .sidebar, .tabBar)
 
             Tab(value: VaultTab.paper) {
                 NavigationStack {
@@ -105,28 +112,34 @@ struct ContentView: View {
             } label: {
                 Label("Paper Trading", systemImage: "chart.line.text.clipboard")
             }
+            .customizationID("vault.tab.paper")
+            .customizationBehavior(.reorderable, for: .sidebar, .tabBar)
 
             Tab(value: VaultTab.watchlist) {
                 NavigationStack {
                     WatchlistsView()
                         .navigationDestination(for: WatchlistGroup.self) { group in
-                            WatchlistGroupDetailView(group: group)
+                            WatchlistGroupDetailView(group: group, viewModel: paperVM)
                         }
                         .navigationDestination(for: WatchItem.self) { item in
-                            WatchDetailView(item: item, currency: currency)
+                            WatchDetailView(item: item, currency: currency, viewModel: paperVM)
                         }
                 }
             } label: {
                 Label("Watchlists", systemImage: "star")
             }
+            .customizationID("vault.tab.watchlist")
+            .customizationBehavior(.reorderable, for: .sidebar, .tabBar)
 
+            // Search keeps its fixed conventional position — it stays put
+            // while the other tabs are reorderable (never hideable).
             Tab(value: VaultTab.search, role: .search) {
-                NavigationStack {
-                    SearchView()
-                }
+                SearchView()
             } label: {
                 Label("Search", systemImage: "magnifyingglass")
             }
+            .customizationID("vault.tab.search")
+            .customizationBehavior(.disabled, for: .sidebar, .tabBar)
 
             Tab(value: VaultTab.settings) {
                 NavigationStack {
@@ -135,8 +148,11 @@ struct ContentView: View {
             } label: {
                 Label("Settings", systemImage: "gearshape")
             }
+            .customizationID("vault.tab.settings")
+            .customizationBehavior(.reorderable, for: .sidebar, .tabBar)
         }
         .tabViewStyle(.sidebarAdaptable)
+        .tabViewCustomization($tabCustomization)
     }
 
     // MARK: - Helpers

@@ -68,10 +68,12 @@ struct AddHoldingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { commit() }
+                    Button { commit() } label: { Image(systemName: "checkmark") }
+                        .accessibilityLabel("Add holding")
                         .buttonStyle(.glassProminent)
                         .tint(Theme.gainButton)
                         .disabled(!canAdd)
@@ -88,21 +90,8 @@ struct AddHoldingView: View {
     private var searchField: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Stock ticker").vaultLabel()
-            HStack(spacing: 12) {
-                Image(systemName: "magnifyingglass").foregroundStyle(Theme.inkDim)
-                TextField("Search ticker or company…", text: $query)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
-                    .foregroundStyle(Theme.ink)
-                    .onChange(of: query) { _, newValue in scheduleSearch(newValue) }
-                if searching { ProgressView().controlSize(.small) }
-                else if let selected { Text(selected.sector).font(.system(size: 13, design: .monospaced)).foregroundStyle(Theme.inkDim) }
-            }
-            .padding(.horizontal, 16).padding(.vertical, 13)
-            .fieldBackground()
-
-            if !results.isEmpty {
+            searchBar
+            if selected == nil && !results.isEmpty {
                 VStack(spacing: 4) {
                     ForEach(results) { result in
                         Button { pick(result) } label: { resultRow(result) }
@@ -119,9 +108,56 @@ struct AddHoldingView: View {
         }
     }
 
+    /// One fixed-height liquid-glass bar for both search and selected states,
+    /// so choosing a ticker never shifts the rest of the form.
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: selected != nil ? "checkmark.circle.fill" : "magnifyingglass")
+                .font(.system(size: 16))
+                .foregroundStyle(selected != nil ? Theme.gain : Theme.inkDim)
+
+            if let selected {
+                Text(selected.symbol)
+                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Theme.ink)
+                Text(selected.name)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.inkDim)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+            } else {
+                TextField("Search ticker or company…", text: $query)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.ink)
+                    .onChange(of: query) { _, newValue in scheduleSearch(newValue) }
+                Spacer(minLength: 0)
+            }
+
+            if searching {
+                ProgressView().controlSize(.small)
+            } else if selected != nil || !query.isEmpty {
+                Button { clearSelection() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 48)
+        .glassEffect(.regular, in: .capsule)
+    }
+
+    private func clearSelection() {
+        selected = nil; query = ""; results = []; inlineError = nil
+    }
+
     private func resultRow(_ result: SymbolResult) -> some View {
         HStack(spacing: 12) {
-            TickerMark(ticker: result.symbol, sector: result.sector, size: 36)
             VStack(alignment: .leading, spacing: 1) {
                 Text(result.symbol).font(.system(size: 15, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
                 Text(result.name).font(.system(size: 12.5)).foregroundStyle(Theme.inkDim).lineLimit(1)
@@ -240,10 +276,13 @@ struct AddHoldingView: View {
     // MARK: Actions
 
     private func scheduleSearch(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        // Keep the active selection while the field still shows its symbol
+        // (pick() sets `query`, which would otherwise clear it via this handler).
+        if let selected, trimmed == selected.symbol { results = []; return }
         selected = nil
         inlineError = nil
         searchTask?.cancel()
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
         guard trimmed.count >= 1 else { results = []; return }
 
         searchTask = Task {

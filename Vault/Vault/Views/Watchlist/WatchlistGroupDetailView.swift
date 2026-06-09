@@ -3,6 +3,8 @@
 //  Vault
 //
 //  Shows all tickers in a named watchlist. Tapping a row pushes WatchDetailView.
+//  Deletion uses the native List affordances — swipe-to-delete and the
+//  edit-mode red minus → slide → Delete confirmation (`.onDelete`).
 //
 
 import SwiftUI
@@ -10,6 +12,7 @@ import SwiftData
 
 struct WatchlistGroupDetailView: View {
     let group: WatchlistGroup
+    let viewModel: PaperTradingViewModel
 
     @Environment(\.modelContext) private var context
     @Environment(AppSettings.self) private var settings
@@ -18,9 +21,11 @@ struct WatchlistGroupDetailView: View {
 
     @State private var showAdd = false
     @State private var editMode: EditMode = .inactive
+    @State private var navItem: WatchItem?
 
-    init(group: WatchlistGroup) {
+    init(group: WatchlistGroup, viewModel: PaperTradingViewModel) {
         self.group = group
+        self.viewModel = viewModel
         let name = group.name
         _items = Query(
             filter: #Predicate<WatchItem> { $0.listName == name },
@@ -48,6 +53,9 @@ struct WatchlistGroupDetailView: View {
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.large)
         .toolbar { toolbarContent }
+        .navigationDestination(item: $navItem) { item in
+            WatchDetailView(item: item, currency: currency, viewModel: viewModel)
+        }
         .sheet(isPresented: $showAdd) {
             AddWatchView(existing: items.map(\.ticker), listName: group.name) { item in
                 context.insert(item)
@@ -60,14 +68,17 @@ struct WatchlistGroupDetailView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            if !items.isEmpty {
+        // Matches WatchlistsView: edit + add on the trailing side so they keep
+        // the same screen position when the system back button takes leading.
+        if !items.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     withAnimation { editMode = editMode == .active ? .inactive : .active }
                 } label: {
                     Image(systemName: editMode == .active ? "checkmark" : "pencil")
                 }
             }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button { showAdd = true } label: {
@@ -81,31 +92,34 @@ struct WatchlistGroupDetailView: View {
     private var tickerList: some View {
         List {
             ForEach(items) { item in
-                WatchRowView(item: item, currency: currency)
-                    .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .overlay { NavigationLink(value: item) { Color.clear } }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            Haptics.impact(.rigid)
-                            context.delete(item)
-                            try? context.save()
-                        } label: { Label("Remove", systemImage: "trash") }
+                Button { navItem = item } label: {
+                    WatchRowView(item: item, currency: currency)
+                }
+                .buttonStyle(PressableRowStyle())
+                .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
+                .listRowBackground(Color.clear)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) { remove(item) } label: {
+                        Label("Delete", systemImage: "trash")
                     }
+                }
             }
-            .onDelete(perform: delete)
+            .onDelete(perform: deleteAt)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
     }
 
-    private func delete(at offsets: IndexSet) {
+    private func deleteAt(_ offsets: IndexSet) {
         Haptics.impact(.rigid)
-        for index in offsets {
-            context.delete(items[index])
-        }
+        offsets.map { items[$0] }.forEach { context.delete($0) }
+        try? context.save()
+    }
+
+    private func remove(_ item: WatchItem) {
+        Haptics.impact(.rigid)
+        context.delete(item)
         try? context.save()
     }
 
@@ -132,7 +146,7 @@ struct WatchlistGroupDetailView: View {
     ZStack {
         VaultBackground(performance: 0.3)
         NavigationStack {
-            WatchlistGroupDetailView(group: WatchlistGroup(name: "Tech"))
+            WatchlistGroupDetailView(group: WatchlistGroup(name: "Tech"), viewModel: PaperTradingViewModel())
                 .environment(AppSettings())
         }
     }

@@ -16,9 +16,7 @@ struct PortfolioSummaryWidget: Widget {
         StaticConfiguration(kind: kind, provider: SnapshotProvider()) { entry in
             PortfolioSummaryView(entry: entry)
                 .widgetURL(URL(string: "vault://portfolio"))
-                .containerBackground(for: .widget) {
-                    Theme.bgDeep
-                }
+                .containerBackground(for: .widget) { WidgetBackground() }
         }
         .configurationDisplayName("Portfolio")
         .description("Your live portfolio value and overall return.")
@@ -122,4 +120,24 @@ private struct PortfolioSummaryView: View {
         }
         .padding(18)
     }
+}
+
+// MARK: - Previews
+
+#Preview("Small", as: .systemSmall) {
+    PortfolioSummaryWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
+}
+
+#Preview("Medium", as: .systemMedium) {
+    PortfolioSummaryWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
+}
+
+#Preview("Large", as: .systemLarge) {
+    PortfolioSummaryWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
 }

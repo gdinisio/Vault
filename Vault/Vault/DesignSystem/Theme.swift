@@ -51,6 +51,11 @@ enum Theme {
     static let bgDeep = dyn(dark: Color(red: 0.027, green: 0.031, blue: 0.047),
                             light: .oklch(0.93, 0.012, 264))
 
+    /// Neutral widget background gradient stops (low chroma — matches the app's
+    /// neutralised content surfaces rather than the bluer app chrome).
+    static let widgetBgTop = dyn(dark: .oklch(0.205, 0.006, 264), light: .oklch(0.985, 0.004, 264))
+    static let widgetBgBottom = dyn(dark: .oklch(0.135, 0.006, 264), light: .oklch(0.93, 0.006, 264))
+
     /// Adaptive "hairline" base used for glass borders and subtle fills:
     /// white in dark mode, dark navy in light mode. Always used with opacity.
     static let line = dyn(dark: .white, light: .oklch(0.28, 0.03, 264))
@@ -62,8 +67,12 @@ enum Theme {
 
     /// Opaque, slightly-elevated fill for content cards/rows. Sits *flat* beneath
     /// the floating Liquid Glass toolbars so the chrome reads as raised glass.
-    static let surface = dyn(dark: .oklch(0.225, 0.030, 264),
+    static let surface = dyn(dark: .oklch(0.225, 0.006, 264),
                              light: .oklch(0.995, 0.004, 264))
+    /// Neutral fill for a selected content row — adapts to light/dark like the
+    /// Apple Stocks selected row (a touch lighter on dark, a touch darker on light).
+    static let surfaceSelected = dyn(dark: .oklch(0.305, 0.006, 264),
+                                     light: .oklch(0.930, 0.005, 264))
     /// Hairline border for matte content surfaces.
     static let surfaceStroke = dyn(dark: Color.white.opacity(0.06),
                                    light: Color.black.opacity(0.06))

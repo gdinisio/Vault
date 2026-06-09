@@ -14,21 +14,38 @@ struct AllocationCardView: View {
     var currency: DisplayCurrency = .gbp
 
     @State private var selected: String?
+    @State private var selectedValue: Double?
+
+    private var total: Double { slices.reduce(0) { $0 + $1.value } }
+    private var selectedSlice: AllocationSlice? { slices.first { $0.ticker == selected } }
 
     private var centreValue: String {
-        if let selected, let slice = slices.first(where: { $0.ticker == selected }) {
-            return "\(Int((slice.fraction * 100).rounded()))%"
-        }
+        if let s = selectedSlice { return "\(Int((s.fraction * 100).rounded()))%" }
         return "100%"
     }
-
-    private var centreLabel: String { selected ?? "Total" }
-
-    private var centreColor: Color {
-        if let selected, let slice = slices.first(where: { $0.ticker == selected }) {
-            return Theme.sectorColor(slice.sector)
+    private var centreLabel: String { selectedSlice?.ticker ?? "Total" }
+    private var centreSub: String {
+        if let s = selectedSlice, s.lotCount > 1 {
+            return "\(Money.currency0(s.value, currency: currency)) · \(s.lotCount) lots"
         }
-        return Theme.ink
+        return Money.currency0(selectedSlice?.value ?? total, currency: currency)
+    }
+    private var centreColor: Color {
+        selectedSlice.map { Theme.sectorColor($0.sector) } ?? Theme.ink
+    }
+
+    /// Subtitle under the title: shows sector + lot count when relevant.
+    private var subtitle: String {
+        if let s = selectedSlice {
+            if s.lotCount > 1 { return "\(s.sector) · \(s.lotCount) lots" }
+            return s.sector
+        }
+        let positions = slices.count
+        let lots = slices.reduce(0) { $0 + $1.lotCount }
+        if lots > positions {
+            return "\(positions) positions · \(lots) lots — tap a slice"
+        }
+        return "By position — tap a slice"
     }
 
     var body: some View {
@@ -36,9 +53,10 @@ struct AllocationCardView: View {
             Text("Allocation")
                 .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-            Text("By position")
+            Text(subtitle)
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.inkDim)
+                .contentTransition(.opacity)
                 .padding(.bottom, 14)
 
             donut
@@ -50,6 +68,7 @@ struct AllocationCardView: View {
         .padding(26)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .contentCard()
+        .sensoryFeedback(.selection, trigger: selected)
     }
 
     private var donut: some View {
@@ -57,59 +76,99 @@ struct AllocationCardView: View {
             SectorMark(
                 angle: .value("Value", slice.value),
                 innerRadius: .ratio(0.72),
+                outerRadius: .ratio(selected == slice.ticker ? 1.0 : 0.9),
                 angularInset: 2.5
             )
             .cornerRadius(6)
             .foregroundStyle(Theme.sectorColor(slice.sector))
-            .opacity(selected == nil || selected == slice.ticker ? 1 : 0.32)
+            .opacity(selected == nil || selected == slice.ticker ? 1 : 0.3)
         }
         .chartLegend(.hidden)
+        .chartAngleSelection(value: $selectedValue)
         .chartBackground { _ in
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Text(centreValue)
                     .font(.system(size: 34, weight: .semibold, design: .monospaced))
                     .foregroundStyle(centreColor)
+                    .contentTransition(.numericText())
                 Text(centreLabel)
-                    .font(.system(size: 12.5))
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Theme.ink)
+                Text(centreSub)
+                    .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(Theme.inkDim)
             }
             .animation(.easeInOut(duration: 0.2), value: selected)
+        }
+        .animation(.bouncy(duration: 0.35), value: selected)
+        .onChange(of: selectedValue) { _, value in
+            guard let value, let ticker = sliceFor(value: value)?.ticker else { return }
+            withAnimation(.bouncy(duration: 0.35)) {
+                selected = (selected == ticker) ? nil : ticker
+            }
         }
     }
 
     private var legend: some View {
         VStack(spacing: 2) {
             ForEach(slices) { slice in
-                HStack(spacing: 11) {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Theme.sectorColor(slice.sector))
-                        .frame(width: 11, height: 11)
-                    Text(slice.ticker)
-                        .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Theme.ink)
-                        .frame(width: 56, alignment: .leading)
-                    Text(Money.currency0(slice.value, currency: currency))
-                        .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(Theme.inkDim)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(String(format: "%.1f%%", slice.fraction * 100))
-                        .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Theme.ink)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Theme.line.opacity(selected == slice.ticker ? 0.07 : 0))
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                Button {
+                    withAnimation(.bouncy(duration: 0.35)) {
                         selected = selected == slice.ticker ? nil : slice.ticker
                     }
+                } label: {
+                    HStack(spacing: 11) {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Theme.sectorColor(slice.sector))
+                            .frame(width: 11, height: 11)
+                            .scaleEffect(selected == slice.ticker ? 1.25 : 1)
+                        HStack(spacing: 5) {
+                            Text(slice.ticker)
+                                .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(Theme.ink)
+                            if slice.lotCount > 1 {
+                                Text("×\(slice.lotCount)")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Theme.inkDim)
+                                    .padding(.horizontal, 5).padding(.vertical, 1)
+                                    .background(
+                                        Capsule().fill(Theme.line.opacity(0.10))
+                                    )
+                                    .accessibilityLabel("\(slice.lotCount) lots")
+                            }
+                        }
+                        .frame(width: 84, alignment: .leading)
+                        Text(Money.currency0(slice.value, currency: currency))
+                            .font(.system(size: 13, design: .monospaced))
+                            .foregroundStyle(Theme.inkDim)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(String(format: "%.1f%%", slice.fraction * 100))
+                            .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(selected == slice.ticker ? centreColorFor(slice) : Theme.ink)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(selected == slice.ticker ? Theme.surfaceSelected : .clear)
+                    )
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
             }
         }
+    }
+
+    private func centreColorFor(_ slice: AllocationSlice) -> Color { Theme.sectorColor(slice.sector) }
+
+    /// Map a value along the donut's angular axis to its slice (cumulative).
+    private func sliceFor(value: Double) -> AllocationSlice? {
+        var cumulative = 0.0
+        for slice in slices {
+            cumulative += slice.value
+            if value <= cumulative { return slice }
+        }
+        return slices.last
     }
 }
 

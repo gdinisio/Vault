@@ -14,6 +14,10 @@ struct TickerSparkline: View {
     /// Fallback trend direction used before real data loads.
     var fallbackUp: Bool
     var range: ChartRange = .month
+    /// Optional fixed line colour. When set (e.g. a position's P&L colour), the
+    /// sparkline keeps the real price shape but uses this colour so it stays
+    /// consistent with the row's P&L pill instead of the period's own trend.
+    var tint: Color? = nil
 
     @State private var closes: [Double] = []
 
@@ -22,13 +26,14 @@ struct TickerSparkline: View {
         if let first = closes.first, let last = closes.last { return last >= first }
         return fallbackUp
     }
+    private var lineColor: Color { tint ?? (up ? Theme.gain : Theme.loss) }
 
     var body: some View {
         SparklineView(
             points: hasReal
                 ? closes
                 : Spark.series(seed: Double(abs(symbol.hashValue % 997)), count: 22, trendingUp: fallbackUp),
-            color: up ? Theme.gain : Theme.loss
+            color: lineColor
         )
         .opacity(hasReal ? 1 : 0.55)
         .animation(.easeInOut(duration: 0.3), value: hasReal)

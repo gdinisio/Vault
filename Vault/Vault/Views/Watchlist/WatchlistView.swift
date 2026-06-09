@@ -4,6 +4,8 @@
 //
 //  Top-level "Watchlists" tab: shows all named watchlists as cards.
 //  Tapping a card pushes WatchlistGroupDetailView with that group's tickers.
+//  Deletion uses the native List affordances — swipe-to-delete and the
+//  edit-mode red minus → slide → Delete confirmation (`.onDelete`).
 //
 
 import SwiftUI
@@ -21,44 +23,17 @@ struct WatchlistsView: View {
     @State private var editMode: EditMode = .inactive
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
-                if groups.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(groups) { group in
-                        let groupItems = allItems.filter { $0.listName == group.name }
-                        if editMode == .active {
-                            HStack(spacing: 12) {
-                                Button(role: .destructive) {
-                                    deleteGroup(group)
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(Theme.loss)
-                                }
-                                .buttonStyle(.plain)
-                                groupCard(group: group, items: groupItems)
-                            }
-                        } else {
-                            NavigationLink(value: group) {
-                                groupCard(group: group, items: groupItems)
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    deleteGroup(group)
-                                } label: {
-                                    Label("Delete Watchlist", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-                }
+        Group {
+            if groups.isEmpty {
+                emptyState
+                    .vaultPagePadding()
+            } else {
+                groupList
             }
-            .vaultPagePadding()
         }
         .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .environment(\.editMode, $editMode)
         .navigationTitle("Watchlists")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { toolbarContent }
@@ -72,18 +47,53 @@ struct WatchlistsView: View {
         .onAppear { ensureDefaultGroup() }
     }
 
+    // MARK: List
+
+    private var groupList: some View {
+        List {
+            ForEach(groups) { group in
+                let groupItems = allItems.filter { $0.listName == group.name }
+                NavigationLink(value: group) {
+                    groupCard(group: group, items: groupItems)
+                }
+                .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) { deleteGroup(group) } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+                .contextMenu {
+                    Button(role: .destructive) {
+                        deleteGroup(group)
+                    } label: {
+                        Label("Delete Watchlist", systemImage: "trash")
+                    }
+                }
+            }
+            .onDelete(perform: deleteAt)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+    }
+
     // MARK: Toolbar
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            if !groups.isEmpty {
+        // Edit + add live on the trailing side in both this view and its
+        // pushed detail view, so they keep the same anchor when the back
+        // button claims the leading slot.
+        if !groups.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     withAnimation { editMode = editMode == .active ? .inactive : .active }
                 } label: {
                     Image(systemName: editMode == .active ? "checkmark" : "pencil")
                 }
             }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button { showNewGroup = true } label: {
@@ -107,9 +117,6 @@ struct WatchlistsView: View {
                         .monospacedDigit()
                 }
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.inkFaint)
             }
 
             if items.isEmpty {
@@ -117,17 +124,7 @@ struct WatchlistsView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.inkFaint)
             } else {
-                HStack(spacing: 6) {
-                    ForEach(items.prefix(5)) { item in
-                        TickerMark(ticker: item.ticker, sector: item.sector, size: 34)
-                    }
-                    if items.count > 5 {
-                        Text("+\(items.count - 5)")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(Theme.inkDim)
-                            .padding(.leading, 2)
-                    }
-                }
+                WatchlistGroupPreview(items: items)
             }
         }
         .padding(18)
@@ -174,12 +171,76 @@ struct WatchlistsView: View {
         Haptics.success()
     }
 
+    private func deleteAt(_ offsets: IndexSet) {
+        Haptics.impact(.rigid)
+        offsets.map { groups[$0] }.forEach { deleteGroupCascade($0) }
+        try? context.save()
+    }
+
     private func deleteGroup(_ group: WatchlistGroup) {
+        Haptics.impact(.rigid)
+        deleteGroupCascade(group)
+        try? context.save()
+    }
+
+    private func deleteGroupCascade(_ group: WatchlistGroup) {
         let itemsToDelete = allItems.filter { $0.listName == group.name }
         itemsToDelete.forEach { context.delete($0) }
         context.delete(group)
-        try? context.save()
-        Haptics.impact(.rigid)
+    }
+}
+
+// MARK: - Group preview (per-ticker change chips)
+
+/// A glanceable preview for a watchlist card: each visible ticker with its
+/// own %P/L, plus a `+N` overflow.
+private struct WatchlistGroupPreview: View {
+    let items: [WatchItem]
+
+    private var shown: [WatchItem] { Array(items.prefix(4)) }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(Array(shown.enumerated()), id: \.element.id) { index, item in
+                TickerChangeChip(ticker: item.ticker)
+                if index < shown.count - 1 {
+                    Text("·").font(.caption).foregroundStyle(Theme.inkFaint)
+                }
+            }
+            if items.count > 4 {
+                Text("·").font(.caption).foregroundStyle(Theme.inkFaint)
+                Text("+\(items.count - 4)")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+            Spacer(minLength: 0)
+        }
+        .lineLimit(1)
+    }
+}
+
+/// A single ticker code + its live 1-month % change.
+private struct TickerChangeChip: View {
+    let ticker: String
+    @State private var change: Double?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(ticker)
+                .font(.caption.weight(.semibold).monospaced())
+                .foregroundStyle(Theme.ink)
+            if let change {
+                Text(Money.percent(change))
+                    .font(.caption2.weight(.semibold).monospaced())
+                    .foregroundStyle(change >= 0 ? Theme.gain : Theme.loss)
+            }
+        }
+        .task(id: ticker) {
+            if let history = try? await PriceHistoryService.shared.history(for: ticker, range: .month),
+               let first = history.first?.close, let last = history.last?.close, first != 0 {
+                change = (last - first) / first * 100
+            }
+        }
     }
 }
 

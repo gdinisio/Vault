@@ -20,13 +20,17 @@ struct PortfolioSummary {
     var performanceSignal: Double = 0
 }
 
-/// One allocation slice for the donut chart.
+/// One allocation slice for the donut chart. A slice represents a *position*
+/// in a ticker — if the same ticker is held across multiple lots (bought at
+/// different times) they are aggregated into a single slice and `lotCount`
+/// reflects how many lots make up this position.
 struct AllocationSlice: Identifiable {
     let id = UUID()
     let ticker: String
     let sector: String
     let value: Double
     let fraction: Double
+    let lotCount: Int
 }
 
 @MainActor
@@ -68,15 +72,29 @@ final class PortfolioViewModel {
         return s
     }
 
+    /// Aggregate slices for the donut. Multiple lots of the same ticker are
+    /// merged into one slice — allocation is *what you own*, not *how many
+    /// times you bought it*. The legend surfaces the lot count when > 1 so the
+    /// underlying purchases stay discoverable.
     func allocations(for holdings: [Holding]) -> [AllocationSlice] {
         let total = holdings.reduce(0) { $0 + $1.currentValue }
         guard total > 0 else { return [] }
-        return holdings
-            .sorted { $0.currentValue > $1.currentValue }
-            .map {
-                AllocationSlice(ticker: $0.ticker, sector: $0.sector,
-                                value: $0.currentValue, fraction: $0.currentValue / total)
-            }
+
+        // Preserve sector from the first encountered lot (lots of the same
+        // ticker share sector in normal use). Group by ticker, sum value.
+        let grouped = Dictionary(grouping: holdings, by: \.ticker)
+        return grouped.map { ticker, lots -> AllocationSlice in
+            let value = lots.reduce(0) { $0 + $1.currentValue }
+            let sector = lots.first?.sector ?? "Other"
+            return AllocationSlice(
+                ticker: ticker,
+                sector: sector,
+                value: value,
+                fraction: value / total,
+                lotCount: lots.count
+            )
+        }
+        .sorted { $0.value > $1.value }
     }
 
     // MARK: Performance history

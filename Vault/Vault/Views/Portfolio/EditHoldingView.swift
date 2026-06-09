@@ -67,8 +67,6 @@ struct EditHoldingView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .buttonStyle(.glassProminent)
-                        .tint(Theme.gainButton)
                         .disabled(!canSave)
                 }
             }
@@ -80,7 +78,6 @@ struct EditHoldingView: View {
 
     private var identityHeader: some View {
         HStack(spacing: 14) {
-            TickerMark(ticker: holding.ticker, sector: holding.sector, size: 42)
             VStack(alignment: .leading, spacing: 2) {
                 Text(holding.ticker).font(.system(size: 19, weight: .semibold)).foregroundStyle(Theme.ink)
                 Text(holding.companyName).font(.system(size: 13)).foregroundStyle(Theme.inkDim).lineLimit(1)

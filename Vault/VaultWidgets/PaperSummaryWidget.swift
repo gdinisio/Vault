@@ -16,9 +16,7 @@ struct PaperSummaryWidget: Widget {
         StaticConfiguration(kind: kind, provider: SnapshotProvider()) { entry in
             PaperSummaryView(entry: entry)
                 .widgetURL(URL(string: "vault://paper"))
-                .containerBackground(for: .widget) {
-                    Theme.bgDeep
-                }
+                .containerBackground(for: .widget) { WidgetBackground() }
         }
         .configurationDisplayName("Paper Trading")
         .description("Your virtual paper trading account equity and P&L.")
@@ -122,4 +120,24 @@ private struct PaperSummaryView: View {
         }
         .padding(18)
     }
+}
+
+// MARK: - Previews
+
+#Preview("Small", as: .systemSmall) {
+    PaperSummaryWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
+}
+
+#Preview("Medium", as: .systemMedium) {
+    PaperSummaryWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
+}
+
+#Preview("Large", as: .systemLarge) {
+    PaperSummaryWidget()
+} timeline: {
+    SnapshotEntry(date: .now, snapshot: .placeholder, isPlaceholder: false)
 }

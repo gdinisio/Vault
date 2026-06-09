@@ -14,26 +14,25 @@ struct PaperPositionRowView: View {
     private var up: Bool { position.profitLoss >= 0 }
 
     var body: some View {
-        HStack(spacing: 12) {
-            TickerMark(ticker: position.ticker, sector: position.sector, size: 40)
-
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(position.ticker)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(Theme.ink)
                 Text("\(Int(position.shares)) sh @ \(Money.currency(position.averageCost, currency: currency))")
-                    .font(.caption2)
+                    .font(.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(Theme.inkDim)
                     .lineLimit(1)
             }
-            .frame(minWidth: 60, maxWidth: 120, alignment: .leading)
 
-            TickerSparkline(symbol: position.ticker, fallbackUp: up)
-                .frame(maxWidth: .infinity)
-                .frame(height: 28)
+            Spacer(minLength: 8)
 
-            VStack(alignment: .trailing, spacing: 1) {
+            TickerSparkline(symbol: position.ticker, fallbackUp: up,
+                            tint: up ? Theme.gain : Theme.loss)
+                .frame(width: 62, height: 30)
+
+            VStack(alignment: .trailing, spacing: 5) {
                 Text(Money.currency(position.currentValue, currency: currency))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
@@ -41,21 +40,13 @@ struct PaperPositionRowView: View {
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                HStack(spacing: 4) {
-                    Text(Money.percent(position.returnPercent))
-                    Text(Money.signed(position.profitLoss, currency: currency))
-                }
-                .font(.caption.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(up ? Theme.gain : Theme.loss)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                ChangePill(text: Money.percent(position.returnPercent),
+                           color: up ? Theme.gain : Theme.loss)
             }
-            .frame(minWidth: 70, maxWidth: 110, alignment: .trailing)
+            .frame(minWidth: 76, alignment: .trailing)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .contentCard(cornerRadius: 18)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 }
 

@@ -110,7 +110,7 @@ struct SingleTickerWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: TickerSelectionIntent.self, provider: TickerIntentProvider()) { entry in
             TickerWidgetView(entry: entry)
                 .widgetURL(URL(string: "vault://portfolio"))
-                .containerBackground(for: .widget) { Theme.bgDeep }
+                .containerBackground(for: .widget) { WidgetBackground() }
         }
         .configurationDisplayName("Single Ticker")
         .description("Track a holding or watchlist stock at a glance.")
@@ -164,9 +164,7 @@ private struct TickerWidgetView: View {
                 .font(.system(size: 20, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1).minimumScaleFactor(0.7)
-            Text(card.changeText)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(tint)
+            WidgetChangePill(text: card.changeText, up: card.up)
         }
         .padding(14)
     }
@@ -184,13 +182,36 @@ private struct TickerWidgetView: View {
                     .font(.system(size: 26, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1).minimumScaleFactor(0.7)
-                Text(card.changeText)
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(tint)
+                WidgetChangePill(text: card.changeText, up: card.up)
             }
             SparklineView(points: spark, color: tint)
                 .frame(width: 120, height: 60)
         }
         .padding(16)
     }
+}
+
+// MARK: - Previews
+
+private extension WidgetSnapshot.TickerCard {
+    static let previewDown = WidgetSnapshot.TickerCard(
+        symbol: "TSLA", name: "Tesla Inc.",
+        priceText: "£198.60", changeText: "-3.2% (1M)", up: false,
+        spark: Spark.series(seed: 4.7, count: 22, trendingUp: false),
+        kind: .watch
+    )
+}
+
+#Preview("Small", as: .systemSmall) {
+    SingleTickerWidget()
+} timeline: {
+    TickerEntry(date: .now, card: .placeholder)
+    TickerEntry(date: .now, card: .previewDown)
+}
+
+#Preview("Medium", as: .systemMedium) {
+    SingleTickerWidget()
+} timeline: {
+    TickerEntry(date: .now, card: .placeholder)
+    TickerEntry(date: .now, card: .previewDown)
 }

@@ -22,39 +22,39 @@ struct WatchRowView: View {
     private var up: Bool { (change ?? 0) >= 0 }
 
     var body: some View {
-        HStack(spacing: 12) {
-            TickerMark(ticker: item.ticker, sector: item.sector, size: 40)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.ticker).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.ink)
-                Text(item.companyName).font(.caption2).foregroundStyle(Theme.inkDim).lineLimit(1)
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.ticker).font(.headline.weight(.semibold)).foregroundStyle(Theme.ink)
+                Text(item.companyName).font(.subheadline).foregroundStyle(Theme.inkDim).lineLimit(1)
             }
-            .frame(minWidth: 60, maxWidth: 120, alignment: .leading)
+
+            Spacer(minLength: 8)
 
             SparklineView(
                 points: hasData ? closes : Spark.series(seed: Double(abs(item.ticker.hashValue % 997)), count: 20, trendingUp: up),
                 color: up ? Theme.gain : Theme.loss
             )
             .opacity(hasData ? 1 : 0.5)
-            .frame(maxWidth: .infinity)
-            .frame(height: 28)
+            .frame(width: 62, height: 30)
 
-            VStack(alignment: .trailing, spacing: 1) {
+            VStack(alignment: .trailing, spacing: 5) {
                 Text(last.map { Money.currency($0, currency: currency) } ?? "—")
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1).minimumScaleFactor(0.8)
-                Text(change.map { "\(Money.percent($0)) · 1M" } ?? " ")
-                    .font(.caption.weight(.semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(up ? Theme.gain : Theme.loss)
-                    .lineLimit(1).minimumScaleFactor(0.75)
+                if let change {
+                    ChangePill(text: Money.percent(change), color: up ? Theme.gain : Theme.loss)
+                } else {
+                    ChangePill(text: "—", color: Theme.inkFaint)
+                }
             }
-            .frame(minWidth: 70, maxWidth: 110, alignment: .trailing)
+            .frame(minWidth: 76, alignment: .trailing)
         }
-        .padding(.horizontal, 14).padding(.vertical, 11)
-        .contentCard(cornerRadius: 18)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .contentShape(Rectangle())
         .task(id: item.ticker) { await load() }
     }
 

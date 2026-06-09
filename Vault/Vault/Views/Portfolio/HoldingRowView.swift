@@ -15,14 +15,11 @@ struct HoldingRowView: View {
     private var up: Bool { holding.profitLoss >= 0 }
 
     var body: some View {
-        HStack(spacing: 12) {
-            TickerMark(ticker: holding.ticker, sector: holding.sector, size: 40)
-
-            // Ticker + name
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(holding.ticker)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(Theme.ink)
                     if holding.isStale {
                         Image(systemName: "wifi.slash")
@@ -31,19 +28,18 @@ struct HoldingRowView: View {
                     }
                 }
                 Text(holding.companyName)
-                    .font(.caption2)
+                    .font(.subheadline)
                     .foregroundStyle(Theme.inkDim)
                     .lineLimit(1)
             }
-            .frame(minWidth: 60, maxWidth: 120, alignment: .leading)
 
-            // Sparkline — fills remaining space
-            TickerSparkline(symbol: holding.ticker, fallbackUp: up)
-                .frame(maxWidth: .infinity)
-                .frame(height: 28)
+            Spacer(minLength: 8)
 
-            // Value + P&L
-            VStack(alignment: .trailing, spacing: 1) {
+            TickerSparkline(symbol: holding.ticker, fallbackUp: up,
+                            tint: up ? Theme.gain : Theme.loss)
+                .frame(width: 62, height: 30)
+
+            VStack(alignment: .trailing, spacing: 5) {
                 Text(Money.currency(holding.currentValue, currency: currency))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
@@ -51,21 +47,13 @@ struct HoldingRowView: View {
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                HStack(spacing: 4) {
-                    Text(Money.signed(holding.profitLoss, currency: currency))
-                    Text(Money.percent(holding.returnPercent))
-                }
-                .font(.caption.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(up ? Theme.gain : Theme.loss)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                ChangePill(text: Money.percent(holding.returnPercent),
+                           color: up ? Theme.gain : Theme.loss)
             }
-            .frame(minWidth: 70, maxWidth: 110, alignment: .trailing)
+            .frame(minWidth: 76, alignment: .trailing)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .contentCard(cornerRadius: 18)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 }
 
