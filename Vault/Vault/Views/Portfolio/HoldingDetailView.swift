@@ -44,6 +44,8 @@ struct HoldingDetailView: View {
                     detailRow("Annualised return", Money.percent(holding.annualisedReturn), tint: holding.annualisedReturn >= 0 ? Theme.gain : Theme.loss)
                     detailRow("Purchased", holding.purchaseDate.formatted(date: .abbreviated, time: .omitted))
                 }
+
+                NewsSection(symbol: holding.ticker)
             }
             .padding(28)
         }

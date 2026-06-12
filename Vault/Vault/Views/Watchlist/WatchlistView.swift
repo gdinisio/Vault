@@ -12,6 +12,8 @@ import SwiftUI
 import SwiftData
 
 struct WatchlistsView: View {
+    let viewModel: PaperTradingViewModel
+
     @Environment(\.modelContext) private var context
     @Environment(AppSettings.self) private var settings
 
@@ -21,6 +23,7 @@ struct WatchlistsView: View {
     @State private var showNewGroup = false
     @State private var newGroupName = ""
     @State private var editMode: EditMode = .inactive
+    @State private var navGroup: WatchlistGroup?
 
     var body: some View {
         Group {
@@ -37,6 +40,11 @@ struct WatchlistsView: View {
         .navigationTitle("Watchlists")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { toolbarContent }
+        // Button + item destination (not NavigationLink) so the rows carry no
+        // disclosure chevron — matches the ticker rows in the detail view.
+        .navigationDestination(item: $navGroup) { group in
+            WatchlistGroupDetailView(group: group, viewModel: viewModel)
+        }
         .alert("New Watchlist", isPresented: $showNewGroup) {
             TextField("Name (e.g. Tech, Growth…)", text: $newGroupName)
                 .autocorrectionDisabled()
@@ -49,16 +57,22 @@ struct WatchlistsView: View {
 
     // MARK: List
 
+    /// One pass over all items per render instead of a filter per row.
+    private var itemsByList: [String: [WatchItem]] {
+        Dictionary(grouping: allItems, by: \.listName)
+    }
+
     private var groupList: some View {
-        List {
+        let itemsByList = self.itemsByList
+        return List {
             ForEach(groups) { group in
-                let groupItems = allItems.filter { $0.listName == group.name }
-                NavigationLink(value: group) {
+                let groupItems = itemsByList[group.name] ?? []
+                Button { navGroup = group } label: {
                     groupCard(group: group, items: groupItems)
                 }
-                .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+                .buttonStyle(PressableRowStyle(cornerRadius: 0))
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) { deleteGroup(group) } label: {
                         Label("Delete", systemImage: "trash")
@@ -92,13 +106,15 @@ struct WatchlistsView: View {
                 } label: {
                     Image(systemName: editMode == .active ? "checkmark" : "pencil")
                 }
+                .accessibilityLabel(editMode == .active ? "Done" : "Edit watchlists")
             }
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button { showNewGroup = true } label: {
-                Image(systemName: "plus")
+                Image(systemName: "rectangle.stack.badge.plus")
             }
+            .accessibilityLabel("New watchlist")
         }
     }
 
@@ -127,9 +143,10 @@ struct WatchlistsView: View {
                 WatchlistGroupPreview(items: items)
             }
         }
-        .padding(18)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentCard(cornerRadius: 20)
+        .contentShape(Rectangle())
     }
 
     // MARK: Empty state
@@ -137,12 +154,12 @@ struct WatchlistsView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "star").font(.system(size: 54)).foregroundStyle(Theme.inkFaint)
-            Text("No watchlists yet").font(.system(size: 22, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text("No watchlists yet").font(.title2.weight(.semibold)).foregroundStyle(Theme.ink)
             Text("Create a named watchlist and fill it with tickers to track.")
-                .font(.system(size: 15)).foregroundStyle(Theme.inkDim).multilineTextAlignment(.center)
+                .font(.subheadline).foregroundStyle(Theme.inkDim).multilineTextAlignment(.center)
             Button { showNewGroup = true } label: {
                 Text("Create watchlist")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.body.weight(.semibold))
                     .padding(.vertical, 8)
                     .padding(.horizontal, 20)
             }
@@ -248,7 +265,7 @@ private struct TickerChangeChip: View {
     ZStack {
         VaultBackground(performance: 0.3)
         NavigationStack {
-            WatchlistsView()
+            WatchlistsView(viewModel: PaperTradingViewModel())
                 .environment(AppSettings())
         }
     }

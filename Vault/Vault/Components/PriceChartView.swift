@@ -60,21 +60,21 @@ struct PriceChartView: View {
                 Text("Price").vaultLabel()
                 if let point = selectedPoint {
                     Text(Money.currency(point.close, currency: currency))
-                        .font(.system(size: 26, weight: .semibold, design: .monospaced))
+                        .font(.title2.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.ink)
                     Text(point.date.formatted(date: .abbreviated, time: .omitted))
-                        .font(.system(size: 12.5, design: .monospaced)).foregroundStyle(Theme.inkDim)
+                        .font(.caption.monospacedDigit()).foregroundStyle(Theme.inkDim)
                 } else if let last = points.last {
                     Text(Money.currency(last.close, currency: currency))
-                        .font(.system(size: 26, weight: .semibold, design: .monospaced))
+                        .font(.title2.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.ink)
                     if let change {
                         Text("\(Money.signed(change.abs, currency: currency)) · \(Money.percent(change.pct)) · \(range.rawValue)")
-                            .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                            .font(.caption.weight(.semibold).monospacedDigit())
                             .foregroundStyle(lineColor)
                     }
                 } else {
-                    Text("—").font(.system(size: 26, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.inkDim)
+                    Text("—").font(.title2.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.inkDim)
                 }
             }
             Spacer()
@@ -91,7 +91,7 @@ struct PriceChartView: View {
         } else if failed || points.count < 2 {
             VStack(spacing: 8) {
                 Image(systemName: "chart.xyaxis.line").font(.system(size: 30)).foregroundStyle(Theme.inkFaint)
-                Text("No price history for \(symbol)").font(.system(size: 13)).foregroundStyle(Theme.inkDim)
+                Text("No price history for \(symbol)").font(.footnote).foregroundStyle(Theme.inkDim)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {

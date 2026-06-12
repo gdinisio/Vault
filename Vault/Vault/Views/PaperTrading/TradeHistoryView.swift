@@ -17,7 +17,10 @@ struct TradeHistoryView: View {
     private var rows: some View {
         VStack(spacing: 0) {
             ForEach(Array(trades.enumerated()), id: \.element.id) { index, trade in
-                TradeRow(trade: trade, currency: currency, isLast: index == trades.count - 1)
+                TradeRow(trade: trade, currency: currency)
+                if index < trades.count - 1 {
+                    Divider().overlay(Theme.line.opacity(0.08))
+                }
             }
         }
     }
@@ -25,13 +28,13 @@ struct TradeHistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Trade history")
-                .font(.system(size: 21, weight: .semibold))
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(Theme.ink)
                 .padding(.bottom, 18)
 
             if trades.isEmpty {
                 Text("No trades yet. Place a paper order to get started.")
-                    .font(.system(size: 14))
+                    .font(.subheadline)
                     .foregroundStyle(Theme.inkDim)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .frame(maxHeight: scrolls ? .infinity : nil, alignment: .topLeading)
@@ -53,57 +56,37 @@ struct TradeHistoryView: View {
 private struct TradeRow: View {
     let trade: PaperTrade
     var currency: DisplayCurrency
-    let isLast: Bool
 
     private var buy: Bool { trade.type == .buy }
     private var tint: Color { buy ? Theme.gain : Theme.loss }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // timeline marker + connector
-            VStack(spacing: 0) {
-                Circle()
-                    .fill(tint)
-                    .frame(width: 13, height: 13)
-                    .shadow(color: tint.opacity(0.5), radius: 5)
-                    .padding(.top, 4)
-                if !isLast {
-                    Rectangle()
-                        .fill(LinearGradient(colors: [Theme.line.opacity(0.16), Theme.line.opacity(0.04)], startPoint: .top, endPoint: .bottom))
-                        .frame(width: 2)
-                        .padding(.vertical, 4)
-                }
-            }
-            .frame(width: 14)
+        HStack(spacing: 12) {
+            Text(trade.type.rawValue)
+                .font(.caption2.weight(.bold)).tracking(0.5)
+                .foregroundStyle(tint)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(Capsule().fill(tint.opacity(0.16)))
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 9) {
-                    Text(trade.type.rawValue)
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .tracking(0.6)
-                        .foregroundStyle(tint)
-                        .padding(.horizontal, 8).padding(.vertical, 2)
-                        .background(Capsule().fill(tint.opacity(0.18)))
-                    Text(trade.ticker)
-                        .font(.system(size: 15.5, weight: .semibold))
-                        .foregroundStyle(Theme.ink)
-                    Text("\(Int(trade.shares)) sh @ \(Money.currency(trade.price, currency: currency))")
-                        .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(Theme.inkDim)
-                }
-                Text(trade.timestamp.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()))
-                    .font(.system(size: 12, design: .monospaced))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(trade.ticker)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                Text("\(Int(trade.shares)) sh @ \(Money.currency(trade.price, currency: currency))")
+                    .font(.caption)
                     .foregroundStyle(Theme.inkDim)
+                Text("\(trade.timestamp.formatted(.dateTime.day().month(.abbreviated).hour().minute()))")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.inkFaint)
             }
-            .padding(.bottom, 20)
 
             Spacer(minLength: 8)
 
             Text("\(buy ? "−" : "+")\(Money.currency(trade.shares * trade.price, currency: currency))")
-                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(buy ? Theme.inkSoft : Theme.gain)
-                .padding(.top, 2)
         }
+        .padding(.vertical, 12)
     }
 }
 

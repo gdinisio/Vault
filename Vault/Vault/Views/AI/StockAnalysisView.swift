@@ -18,10 +18,12 @@ struct StockAnalysisView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
 
-    init(snapshot: StockSnapshot, currency: DisplayCurrency = .gbp) {
+    init(snapshot: StockSnapshot, currency: DisplayCurrency = .gbp, initialMessages: [ChatMessage] = []) {
         self.snapshot = snapshot
         self.currency = currency
-        _viewModel = State(initialValue: StockAnalysisViewModel(snapshot: snapshot, currency: currency))
+        let vm = StockAnalysisViewModel(snapshot: snapshot, currency: currency)
+        vm.messages = initialMessages   // seed a conversation (used by previews)
+        _viewModel = State(initialValue: vm)
     }
 
     var body: some View {
@@ -29,10 +31,16 @@ struct StockAnalysisView: View {
             VStack(spacing: 0) {
                 positionStrip
                 content
-                askBar
             }
             .frame(maxWidth: 920)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Ask bar floats as Liquid Glass chrome — content scrolls under it
+            // (matches AIAnalysisView).
+            .safeAreaInset(edge: .bottom) {
+                askBar
+                    .frame(maxWidth: 920)
+                    .frame(maxWidth: .infinity)
+            }
             .navigationTitle(snapshot.ticker)
             .navigationSubtitle("Decision support · \(snapshot.companyName)")
             .navigationBarTitleDisplayMode(.inline)
@@ -101,7 +109,7 @@ struct StockAnalysisView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     if viewModel.messages.isEmpty && !viewModel.isLoading {
                         Text("Add a **Gemini** or **Groq** API key in Settings to get a news-driven read on \(snapshot.ticker). Recent headlines are listed below.")
-                            .font(.system(size: 15)).foregroundStyle(Theme.inkSoft).lineSpacing(4)
+                            .font(.subheadline).foregroundStyle(Theme.ink).lineSpacing(4)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(18)
                             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.line.opacity(0.05)))
@@ -116,7 +124,7 @@ struct StockAnalysisView: View {
                     if viewModel.isLoading {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small).tint(Theme.aiPurple)
-                            Text("Reading the latest news…").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+                            Text("Reading the latest news…").font(.subheadline).foregroundStyle(Theme.inkDim)
                         }.id("loading")
                     }
                     if !viewModel.headlines.isEmpty {
@@ -126,6 +134,7 @@ struct StockAnalysisView: View {
                 .padding(.horizontal, 30).padding(.vertical, 18)
             }
             .scrollIndicators(.hidden)
+            .scrollEdgeEffectStyle(.soft, for: [.top, .bottom])
             .onChange(of: viewModel.messages.count) { _, _ in
                 if let last = viewModel.messages.last {
                     withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
@@ -150,7 +159,7 @@ struct StockAnalysisView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Circle().fill(Theme.inkFaint).frame(width: 5, height: 5).padding(.top, 7)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(item.headline).font(.system(size: 13.5)).foregroundStyle(Theme.inkSoft).lineLimit(2)
+                        Text(item.headline).font(.system(size: 13.5)).foregroundStyle(Theme.ink).lineLimit(2)
                         Text("\(item.source) · \(item.date.formatted(date: .abbreviated, time: .omitted))")
                             .font(.system(size: 11.5)).foregroundStyle(Theme.inkDim)
                     }
@@ -170,8 +179,9 @@ struct StockAnalysisView: View {
                 HStack(spacing: 8) {
                     ForEach(viewModel.suggestions, id: \.self) { s in
                         Button { send(s) } label: {
-                            Text(s).font(.system(size: 13.5)).foregroundStyle(Theme.inkSoft)
-                                .padding(.horizontal, 15).padding(.vertical, 9).glassPill()
+                            Text(s).font(.system(size: 13.5)).foregroundStyle(Theme.ink)
+                                .padding(.horizontal, 15).padding(.vertical, 9)
+                                .glassEffect(.regular, in: .capsule)
                         }.buttonStyle(.plain)
                     }
                 }.padding(.horizontal, 30)
@@ -195,7 +205,8 @@ struct StockAnalysisView: View {
             .glassEffect(.regular, in: .capsule)
             .padding(.horizontal, 30)
         }
-        .padding(.bottom, 24)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     private func send(_ text: String) {
@@ -232,7 +243,7 @@ private struct AnalysisSections: View {
                     }
                     Text(attributed(section.body))
                         .font(.system(size: section.title == nil ? 16 : 16.5))
-                        .foregroundStyle(section.title == "Lean" ? Theme.ink : Theme.inkSoft)
+                        .foregroundStyle(Theme.ink)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -296,6 +307,13 @@ private struct AnalysisSections: View {
 
 #Preview {
     Color.black.sheet(isPresented: .constant(true)) {
-        StockAnalysisView(snapshot: StockSnapshot(holding: MockData.holdings[4]))
+        StockAnalysisView(
+            snapshot: StockSnapshot(holding: MockData.holdings[4]),
+            initialMessages: [
+                ChatMessage(role: .assistant, text: "The recent move is **earnings-driven** — last week's print beat on both revenue and margins, and the stock has held the gains since. Sentiment in the headlines below is broadly positive, with the main debate being **valuation** after the run rather than the fundamentals.\n\nFor your position specifically: you're sitting on a solid unrealised gain, so the decision is about **risk**, not conviction. If this name has grown into an oversized share of your portfolio, scaling back into strength is defensible.\n\nWhat to watch: guidance at the next quarter and any shift in the demand commentary that's been driving the multiple."),
+                ChatMessage(role: .user, text: "Is now a good entry point to add more?"),
+                ChatMessage(role: .assistant, text: "Adding *after* a sharp run means you're paying up, so size any add modestly and consider **averaging in** rather than a single lump. The headlines don't show a fresh catalyst — the move is the previous beat working through — so there's no urgency. I'm not able to give personalised investment advice, but the balanced read is: the thesis is intact, the price is fuller, and patience costs little here.")
+            ]
+        )
     }
 }

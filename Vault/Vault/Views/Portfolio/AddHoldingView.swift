@@ -118,10 +118,10 @@ struct AddHoldingView: View {
 
             if let selected {
                 Text(selected.symbol)
-                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.ink)
                 Text(selected.name)
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .foregroundStyle(Theme.inkDim)
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -130,7 +130,7 @@ struct AddHoldingView: View {
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
-                    .font(.system(size: 16))
+                    .font(.body)
                     .foregroundStyle(Theme.ink)
                     .onChange(of: query) { _, newValue in scheduleSearch(newValue) }
                 Spacer(minLength: 0)
@@ -149,7 +149,7 @@ struct AddHoldingView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
-        .glassEffect(.regular, in: .capsule)
+        .fieldBackground()
     }
 
     private func clearSelection() {
@@ -159,14 +159,14 @@ struct AddHoldingView: View {
     private func resultRow(_ result: SymbolResult) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(result.symbol).font(.system(size: 15, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
+                Text(result.symbol).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ink)
                 Text(result.name).font(.system(size: 12.5)).foregroundStyle(Theme.inkDim).lineLimit(1)
             }
             Spacer()
             if let priceUSD = result.price {
                 // Search universe prices are USD — show in the entry currency.
                 Text(Money.literal(Money.convert(priceUSD, to: entryCurrency), currency: entryCurrency))
-                    .font(.system(size: 13, design: .monospaced)).foregroundStyle(Theme.inkDim)
+                    .font(.footnote).foregroundStyle(Theme.inkDim)
             }
         }
         .padding(.horizontal, 11).padding(.vertical, 9)
@@ -196,22 +196,22 @@ struct AddHoldingView: View {
                 labelledField("Number of shares") {
                     numericField($sharesText, placeholder: "0")
                 }
-                labelledField("Purchase price (\(entryCurrency.symbol))") {
+                labelledField("Purchase price") {
                     numericField($priceText, placeholder: "0.00")
                 }
             }
             GridRow {
                 labelledField("Purchase date") {
+                    // Native compact picker — no field box around it, which
+                    // would otherwise read as a pill nested inside a box.
                     DatePicker("", selection: $purchaseDate, in: ...Date.now, displayedComponents: .date)
                         .labelsHidden()
                         .datePickerStyle(.compact)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12).padding(.vertical, 7)
-                        .fieldBackground()
                 }
                 HStack(spacing: 16) {
-                    labelledField("FX charge (\(entryCurrency.symbol))") { numericField($fxText, placeholder: "0.00") }
-                    labelledField("Broker fee (\(entryCurrency.symbol))") { numericField($feeText, placeholder: "0.00") }
+                    labelledField("FX charge") { numericField($fxText, placeholder: "0.00") }
+                    labelledField("Broker fee") { numericField($feeText, placeholder: "0.00") }
                 }
             }
         }

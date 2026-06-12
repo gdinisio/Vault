@@ -115,9 +115,9 @@ struct BuyView: View {
                 .foregroundStyle(Theme.gain)
                 .frame(width: 64, height: 64)
                 .background(Circle().fill(Theme.gain.opacity(0.18)))
-            Text("Paper order placed").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text("Paper order placed").font(.title3.weight(.semibold)).foregroundStyle(Theme.ink)
             Text("Bought \(shares) \(selected?.symbol ?? "") @ \(Money.currency(price, currency: currency))")
-                .font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+                .font(.subheadline).foregroundStyle(Theme.inkDim)
         }
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity)
@@ -125,8 +125,9 @@ struct BuyView: View {
 
     // MARK: Pieces
 
-    /// One fixed-height liquid-glass bar serving both the search and selected
-    /// states, so choosing a ticker never changes the layout height.
+    /// One fixed-height flat field serving both the search and selected states,
+    /// so choosing a ticker never changes the layout height. Flat (not glass)
+    /// because it lives in the content layer — glass is reserved for chrome.
     private var searchBar: some View {
         HStack(spacing: 10) {
             Image(systemName: selected != nil ? "checkmark.circle.fill" : "magnifyingglass")
@@ -135,16 +136,16 @@ struct BuyView: View {
 
             if let selected {
                 Text(selected.symbol)
-                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.ink)
                 Text(selected.name)
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .foregroundStyle(Theme.inkDim)
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 if price > 0 {
                     Text(Money.currency(price, currency: currency))
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.inkSoft)
                 }
             } else {
@@ -152,7 +153,7 @@ struct BuyView: View {
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
-                    .font(.system(size: 16, design: .monospaced))
+                    .font(.body)
                     .foregroundStyle(Theme.ink)
                     .onChange(of: query) { _, v in scheduleSearch(v) }
                 Spacer(minLength: 0)
@@ -169,7 +170,7 @@ struct BuyView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
-        .glassEffect(.regular, in: .capsule)
+        .fieldBox()
     }
 
     private var resultsList: some View {
@@ -179,7 +180,7 @@ struct BuyView: View {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(r.symbol).font(.system(size: 14, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
-                            Text(r.name).font(.system(size: 12)).foregroundStyle(Theme.inkDim).lineLimit(1)
+                            Text(r.name).font(.caption).foregroundStyle(Theme.inkDim).lineLimit(1)
                         }
                         Spacer()
                     }
@@ -199,7 +200,7 @@ struct BuyView: View {
 
     private func summaryRow(_ label: String, _ value: String, emphasised: Bool = false) -> some View {
         HStack {
-            Text(label).font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+            Text(label).font(.subheadline).foregroundStyle(Theme.inkDim)
             Spacer()
             Text(value).font(.system(size: emphasised ? 22 : 15, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
         }

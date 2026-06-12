@@ -2,13 +2,14 @@
 //  GlassStyle.swift
 //  Vault
 //
-//  Reusable Liquid Glass surface treatments: translucent fill, hairline
-//  white stroke and a soft specular highlight. Used by every card and pill.
+//  Reusable surface treatments built on system materials and semantic
+//  colours — no painted gradients, sheens or shadows. Glass (material) is
+//  reserved for chrome; content sits on flat system surfaces.
 //
 
 import SwiftUI
 
-// MARK: - Glass card surface
+// MARK: - Glass card surface (chrome)
 
 struct GlassCard: ViewModifier {
     var cornerRadius: CGFloat = Theme.cardRadius
@@ -16,80 +17,35 @@ struct GlassCard: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        // top-left specular sheen
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.white.opacity(0.10), .clear],
-                                    startPoint: .topLeading,
-                                    endPoint: .center
-                                )
-                            )
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .strokeBorder(Theme.line.opacity(strokeOpacity), lineWidth: 0.5)
-                    }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: Theme.cardShadow, radius: 24, x: 0, y: 18)
+            .background(.ultraThinMaterial,
+                        in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }
 
-// MARK: - Matte content card surface (flat — glass is reserved for chrome)
+// MARK: - Content container (flat, chrome-less)
 
+/// Logical grouping for content (charts, allocation, grouped detail rows).
+/// No fill and no outline — the Stocks-style flat aesthetic relies on section
+/// titles, spacing, and internal hairline separators for structure, never a
+/// container border (which would double-up with those separators). Fills are
+/// reserved for selection/press. Kept as a modifier so chrome can be tuned in
+/// one place; the rounded clip keeps any inner backgrounds tidy.
 struct ContentCard: ViewModifier {
     var cornerRadius: CGFloat = Theme.contentRadius
 
     func body(content: Content) -> some View {
         content
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Theme.surface)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .strokeBorder(Theme.surfaceStroke, lineWidth: 0.5)
-                    }
-            }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: Theme.surfaceShadow, radius: 14, x: 0, y: 8)
-    }
-}
-
-// MARK: - Thin glass pill (chips, segmented controls)
-
-struct GlassPill: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .background {
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .strokeBorder(Theme.line.opacity(0.12), lineWidth: 0.5)
-                    }
-            }
-            .clipShape(Capsule(style: .continuous))
     }
 }
 
 extension View {
-    /// Liquid Glass card surface with hairline stroke + specular highlight.
+    /// Glass (material) card surface — for chrome.
     func glassCard(cornerRadius: CGFloat = Theme.cardRadius, strokeOpacity: Double = 0.15) -> some View {
         modifier(GlassCard(cornerRadius: cornerRadius, strokeOpacity: strokeOpacity))
     }
 
-    /// Thin glass pill surface.
-    func glassPill() -> some View {
-        modifier(GlassPill())
-    }
-
-    /// Flat, opaque content surface. The matte counterpart to `glassCard()` —
-    /// use for content (rows, cards, charts) so glass stays on the chrome.
+    /// Flat system content surface (inset-grouped cell colour).
     func contentCard(cornerRadius: CGFloat = Theme.contentRadius) -> some View {
         modifier(ContentCard(cornerRadius: cornerRadius))
     }
@@ -122,12 +78,11 @@ struct VaultPagePadding: ViewModifier {
 // MARK: - Uppercase label style
 
 extension View {
-    /// The small uppercase tracking label used above values.
+    /// The small uppercase label used above values — system grouped-header style.
     func vaultLabel() -> some View {
         self
-            .font(.system(size: 12, weight: .semibold))
-            .tracking(1.2)
+            .font(.footnote.weight(.semibold))
             .textCase(.uppercase)
-            .foregroundStyle(Theme.inkDim)
+            .foregroundStyle(.secondary)
     }
 }

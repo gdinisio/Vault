@@ -19,12 +19,14 @@ struct AIAnalysisView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
 
-    init(digests: [HoldingDigest], summary: PortfolioSummary, currency: DisplayCurrency = .gbp, title: String = "Portfolio analysis") {
+    init(digests: [HoldingDigest], summary: PortfolioSummary, currency: DisplayCurrency = .gbp, title: String = "Portfolio analysis", initialMessages: [ChatMessage] = []) {
         self.digests = digests
         self.summary = summary
         self.currency = currency
         self.title = title
-        _viewModel = State(initialValue: AIAnalysisViewModel(currency: currency))
+        let vm = AIAnalysisViewModel(currency: currency)
+        vm.messages = initialMessages   // seed a conversation (used by previews)
+        _viewModel = State(initialValue: vm)
     }
 
     var body: some View {
@@ -32,10 +34,17 @@ struct AIAnalysisView: View {
             VStack(spacing: 0) {
                 metrics
                 conversation
-                askBar
             }
             .frame(maxWidth: 1040)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Ask bar floats as Liquid Glass chrome: the conversation scrolls
+            // *under* it (no flat bottom block to scroll past), and the
+            // suggestion chips hover over the text alongside it.
+            .safeAreaInset(edge: .bottom) {
+                askBar
+                    .frame(maxWidth: 1040)
+                    .frame(maxWidth: .infinity)
+            }
             .navigationTitle(title)
             .navigationSubtitle(providerLine)
             .navigationBarTitleDisplayMode(.inline)
@@ -44,6 +53,7 @@ struct AIAnalysisView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "checkmark")
                     }
+                    .buttonStyle(.glassProminent)
                 }
             }
             .toast($viewModel.toast)
@@ -62,26 +72,32 @@ struct AIAnalysisView: View {
 
     // MARK: Metrics
 
+    /// Flat stat row (Stocks "Key Statistics" style) — no card chrome; the three
+    /// stats sit on one line at all widths (equal columns), so iPhone never
+    /// wraps a metric onto a second row. Labels reserve two lines so the values
+    /// stay aligned even when a label ("Largest position") wraps on a narrow
+    /// iPhone column; values shrink to fit rather than truncate.
     private var metrics: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 14) {
             ForEach(viewModel.metrics) { metric in
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(metric.label)
-                        .font(.system(size: 11, weight: .semibold)).tracking(0.8).textCase(.uppercase)
+                        .font(.caption2.weight(.semibold)).textCase(.uppercase)
                         .foregroundStyle(Theme.inkDim)
+                        .lineLimit(2, reservesSpace: true)
                     Text(metric.value)
-                        .font(.system(size: 28, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 26, weight: .semibold, design: .monospaced))
                         .foregroundStyle(tone(metric.tone))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    Text(metric.note).font(.system(size: 12)).foregroundStyle(Theme.inkDim).lineLimit(1)
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                    Text(metric.note)
+                        .font(.caption2).foregroundStyle(Theme.inkDim)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 18).padding(.vertical, 16)
-                .contentCard()
             }
         }
-        .padding(.horizontal, 34).padding(.top, 8).padding(.bottom, 8)
+        .padding(.horizontal, 34).padding(.top, 8).padding(.bottom, 12)
     }
 
     private func tone(_ tone: AIMetric.Tone) -> Color {
@@ -108,7 +124,7 @@ struct AIAnalysisView: View {
                     if viewModel.isLoading {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small).tint(Theme.aiPurple)
-                            Text("Analysing your portfolio…").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+                            Text("Analysing your portfolio…").font(.subheadline).foregroundStyle(Theme.inkDim)
                         }
                         .id("loading")
                     }
@@ -118,6 +134,9 @@ struct AIAnalysisView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
+            // Soft fade where the conversation meets the metrics (top) and the
+            // floating ask bar (bottom) — no hard scroll edges.
+            .scrollEdgeEffectStyle(.soft, for: [.top, .bottom])
             .onChange(of: viewModel.messages.count) { _, _ in
                 if let last = viewModel.messages.last {
                     withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
@@ -131,9 +150,9 @@ struct AIAnalysisView: View {
             Text("Get your portfolio analysed")
                 .font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.ink)
             Text("Add a **Gemini** or **Groq** API key in Settings to enable in-app analysis — it compiles your holdings, P&L and the latest news on each position and runs it automatically.")
-                .font(.system(size: 15)).foregroundStyle(Theme.inkSoft).lineSpacing(4)
+                .font(.subheadline).foregroundStyle(Theme.ink).lineSpacing(4)
             Text("The metric cards above are computed live on-device.")
-                .font(.system(size: 13)).foregroundStyle(Theme.inkDim)
+                .font(.footnote).foregroundStyle(Theme.inkDim)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
@@ -152,24 +171,23 @@ struct AIAnalysisView: View {
                         Task { await viewModel.generateBrief() }
                     } label: {
                         HStack(spacing: 7) {
-                            Image(systemName: "newspaper.fill").font(.system(size: 12))
-                            Text("Today's brief").font(.system(size: 13.5, weight: .semibold))
+                            Image(systemName: "newspaper.fill").font(.caption)
+                            Text("Today's brief").font(.system(size: 13.5, weight: .bold))
                         }
                         .foregroundStyle(Theme.aiPurple)
                         .padding(.horizontal, 16).padding(.vertical, 9)
-                        .background(
-                            Capsule().fill(Theme.aiPurple.opacity(0.16))
-                                .overlay(Capsule().strokeBorder(Theme.aiPurple.opacity(0.35), lineWidth: 0.5))
-                        )
+                        // Liquid Glass like the other chips, but a faint tint +
+                        // bold text keep it the featured action.
+                        .glassEffect(.regular.tint(Theme.aiPurple.opacity(0.22)), in: .capsule)
                     }
                     .buttonStyle(.plain)
                     .disabled(viewModel.isLoading)
 
                     ForEach(viewModel.suggestions, id: \.self) { suggestion in
                         Button { send(suggestion) } label: {
-                            Text(suggestion).font(.system(size: 13.5)).foregroundStyle(Theme.inkSoft)
+                            Text(suggestion).font(.system(size: 13.5)).foregroundStyle(Theme.ink)
                                 .padding(.horizontal, 15).padding(.vertical, 9)
-                                .glassPill()
+                                .glassEffect(.regular, in: .capsule)
                         }.buttonStyle(.plain)
                     }
                 }
@@ -198,7 +216,8 @@ struct AIAnalysisView: View {
             .glassEffect(.regular, in: .capsule)
             .padding(.horizontal, 34)
         }
-        .padding(.bottom, 28)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     private func send(_ text: String) {
@@ -231,7 +250,7 @@ private struct MessageBubble: View {
                 ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, para in
                     Text(attributed(para))
                         .font(.system(size: 18))
-                        .foregroundStyle(Theme.inkSoft)
+                        .foregroundStyle(Theme.ink)
                         .lineSpacing(5)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -255,7 +274,12 @@ private struct MessageBubble: View {
     Color.black.sheet(isPresented: .constant(true)) {
         AIAnalysisView(
             digests: MockData.holdings.map { HoldingDigest($0) },
-            summary: PortfolioViewModel().summary(for: MockData.holdings)
+            summary: PortfolioViewModel().summary(for: MockData.holdings),
+            initialMessages: [
+                ChatMessage(role: .assistant, text: "Your book is **up 12.4% annualised** and the recent move is led by technology. The standout is **NVDA**, which after its run is now roughly a third of your holdings — that's the single biggest driver of both your gains and your risk.\n\nThe main concern is **concentration**: technology is ~58% of the portfolio, so a sector pullback would hit you harder than the index. Recent headlines remain constructive — **AAPL** on services growth and **MSFT** on cloud margins — but none of that offsets the single-name weight in NVDA.\n\nOne concrete step: trimming a slice of NVDA into a healthcare or broad index position would cut diversification risk meaningfully without giving up much expected return."),
+                ChatMessage(role: .user, text: "Should I trim my biggest winner after this run?"),
+                ChatMessage(role: .assistant, text: "Trimming **NVDA** is risk management, not a bet against the company. At ~33% of your book, a **10–15% trim** brings it back toward a 25% weight while leaving plenty of upside exposure.\n\nTwo things to weigh: the **tax impact** of realising gains in a taxable account, and where you redeploy — an under-weighted sector improves your diversification more than adding to another tech name.")
+            ]
         )
     }
 }

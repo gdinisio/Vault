@@ -24,6 +24,7 @@ struct WatchDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 PriceChartView(symbol: item.ticker, sector: item.sector, currency: currency)
+                NewsSection(symbol: item.ticker)
             }
             .padding(20)
         }
@@ -40,7 +41,7 @@ struct WatchDetailView: View {
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
             ToolbarItem(placement: .topBarTrailing) {
                 Button { Haptics.impact(.light); showBuy = true } label: {
-                    Label("Buy in Paper Trading", systemImage: "cart.badge.plus")
+                    Label("Buy in Paper Trading", systemImage: "plus")
                 }
             }
         }

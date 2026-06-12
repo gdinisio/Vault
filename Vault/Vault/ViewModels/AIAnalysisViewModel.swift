@@ -135,32 +135,25 @@ final class AIAnalysisViewModel {
                                        currency: DisplayCurrency) -> [AIMetric] {
         guard !digests.isEmpty, summary.currentValue > 0 else { return [] }
 
-        var sectorTotals: [String: Double] = [:]
-        for d in digests { sectorTotals[d.sector, default: 0] += d.currentValue }
-        let topSector = sectorTotals.max { $0.value < $1.value }
-        let concentration = (topSector?.value ?? 0) / summary.currentValue * 100
-
+        // The three facts worth surfacing: what it's worth, how it's done, and
+        // the single biggest concentration risk. Everything else (sector
+        // counts, separate annualised figure) is detail the AI text covers.
         let largest = digests.max { $0.currentValue < $1.currentValue }
         let largestPct = (largest?.currentValue ?? 0) / summary.currentValue * 100
-        let sectorCount = Set(digests.map(\.sector)).count
 
         return [
-            AIMetric(label: "Concentration",
-                     value: String(format: "%.0f%%", concentration),
-                     note: "\(topSector?.key ?? "—") weight",
-                     tone: concentration >= 45 ? .warn : .neutral),
-            AIMetric(label: "Annualised return",
-                     value: Money.percent(summary.annualisedReturn),
-                     note: "trailing, cost-weighted",
-                     tone: summary.annualisedReturn >= 0 ? .good : .warn),
+            AIMetric(label: "Value",
+                     value: Money.currency0(summary.currentValue, currency: currency),
+                     note: "\(digests.count) holding\(digests.count == 1 ? "" : "s")",
+                     tone: .neutral),
+            AIMetric(label: "Return",
+                     value: Money.percent(summary.returnPercent),
+                     note: Money.signed(summary.profitLoss, currency: currency),
+                     tone: summary.profitLoss >= 0 ? .good : .warn),
             AIMetric(label: "Largest position",
                      value: largest?.ticker ?? "—",
                      note: String(format: "%.0f%% of book", largestPct),
-                     tone: .neutral),
-            AIMetric(label: "Holdings",
-                     value: "\(digests.count)",
-                     note: "across \(sectorCount) sector\(sectorCount == 1 ? "" : "s")",
-                     tone: .neutral)
+                     tone: largestPct >= 30 ? .warn : .neutral)
         ]
     }
 }

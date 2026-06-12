@@ -77,6 +77,7 @@ struct WatchlistGroupDetailView: View {
                 } label: {
                     Image(systemName: editMode == .active ? "checkmark" : "pencil")
                 }
+                .accessibilityLabel(editMode == .active ? "Done" : "Edit tickers")
             }
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
@@ -84,6 +85,7 @@ struct WatchlistGroupDetailView: View {
             Button { showAdd = true } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel("Add ticker")
         }
     }
 
@@ -128,12 +130,12 @@ struct WatchlistGroupDetailView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "star").font(.system(size: 54)).foregroundStyle(Theme.inkFaint)
-            Text("\(group.name) is empty").font(.system(size: 22, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text("\(group.name) is empty").font(.title2.weight(.semibold)).foregroundStyle(Theme.ink)
             Text("Add tickers you're tracking to keep an eye on prices and get AI analysis.")
-                .font(.system(size: 15)).foregroundStyle(Theme.inkDim).multilineTextAlignment(.center)
+                .font(.subheadline).foregroundStyle(Theme.inkDim).multilineTextAlignment(.center)
             Button { showAdd = true } label: {
                 Text("Add ticker")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.body.weight(.semibold))
                     .padding(.horizontal, 20).padding(.vertical, 8)
             }.buttonStyle(.glassProminent).padding(.top, 8)
         }

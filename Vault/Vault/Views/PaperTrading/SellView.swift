@@ -77,7 +77,7 @@ struct SellView: View {
         VStack(alignment: .leading, spacing: 18) {
             if positions.isEmpty {
                 Text("You have no open positions to sell.")
-                    .font(.system(size: 15)).foregroundStyle(Theme.inkDim)
+                    .font(.subheadline).foregroundStyle(Theme.inkDim)
                     .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 30)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -97,19 +97,19 @@ struct SellView: View {
                                 .font(.system(size: 16)).foregroundStyle(Theme.gain)
                             if let selected {
                                 Text(selected.ticker)
-                                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                                    .font(.callout.weight(.semibold).monospacedDigit())
                                     .foregroundStyle(Theme.ink)
                                 Text("\(Int(selected.shares)) sh @ \(Money.currency(selected.currentPrice, currency: currency))")
-                                    .font(.system(size: 13, design: .monospaced))
+                                    .font(.footnote)
                                     .foregroundStyle(Theme.inkDim)
                                     .lineLimit(1)
                             }
                             Spacer(minLength: 8)
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 13)).foregroundStyle(Theme.inkDim)
+                            Image(systemName: "chevron.up.chevron.down").font(.footnote).foregroundStyle(Theme.inkDim)
                         }
                         .padding(.horizontal, 16)
                         .frame(height: 48)
-                        .glassEffect(.regular, in: .capsule)
+                        .fieldBoxSell()
                     }
                 }
 
@@ -148,16 +148,16 @@ struct SellView: View {
             Image(systemName: "checkmark")
                 .font(.system(size: 32, weight: .bold)).foregroundStyle(Theme.gain)
                 .frame(width: 64, height: 64).background(Circle().fill(Theme.gain.opacity(0.18)))
-            Text("Paper sale placed").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text("Paper sale placed").font(.title3.weight(.semibold)).foregroundStyle(Theme.ink)
             Text("Sold \(shares) \(selected?.ticker ?? "") for \(Money.currency(proceeds, currency: currency))")
-                .font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+                .font(.subheadline).foregroundStyle(Theme.inkDim)
         }
         .padding(.vertical, 24).frame(maxWidth: .infinity)
     }
 
     private func summaryRow(_ label: String, _ value: String, emphasised: Bool = false, tint: Color = Theme.ink) -> some View {
         HStack {
-            Text(label).font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+            Text(label).font(.subheadline).foregroundStyle(Theme.inkDim)
             Spacer()
             Text(value).font(.system(size: emphasised ? 22 : 15, weight: .semibold, design: .monospaced)).foregroundStyle(tint)
         }

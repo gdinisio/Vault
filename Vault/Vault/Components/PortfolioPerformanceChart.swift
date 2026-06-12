@@ -60,7 +60,7 @@ struct PortfolioPerformanceChart: View {
         if let point = selectedPoint {
             VStack(alignment: .leading, spacing: 1) {
                 Text(Money.currency(point.close, currency: currency))
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
+                    .font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ink)
                 Text(point.date.formatted(date: .abbreviated, time: range.isIntraday ? .shortened : .omitted))
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.inkDim)
             }
@@ -69,7 +69,7 @@ struct PortfolioPerformanceChart: View {
                 Text("\(Money.signed(change.abs, currency: currency)) · \(Money.percent(change.pct))")
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
                     .foregroundStyle(lineColor)
-                Text(range.rawValue).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.inkDim)
+                Text(range.rawValue).font(.caption.monospacedDigit()).foregroundStyle(Theme.inkDim)
             }
         }
     }

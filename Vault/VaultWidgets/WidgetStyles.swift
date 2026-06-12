@@ -28,12 +28,11 @@ func signalColor(_ signal: Double) -> Color {
 
 // MARK: - Neutral widget background
 
-/// Subtle neutral gradient that harmonises widgets with the app's flat, matte
-/// content surfaces (and adapts to light/dark).
+/// Flat system background matching the app's matte content surfaces
+/// (adapts to light/dark).
 struct WidgetBackground: View {
     var body: some View {
-        LinearGradient(colors: [Theme.widgetBgTop, Theme.widgetBgBottom],
-                       startPoint: .top, endPoint: .bottom)
+        Color(.systemBackground)
     }
 }
 

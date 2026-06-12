@@ -17,6 +17,7 @@ struct PortfolioView: View {
     var onOpenAI: () -> Void
 
     @State private var showAddSheet = false
+    @State private var navHolding: Holding?
 
     private var sortedHoldings: [Holding] {
         holdings.sorted { $0.currentValue > $1.currentValue }
@@ -55,6 +56,9 @@ struct PortfolioView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle("Portfolio")
         .toolbar { toolbarContent }
+        .navigationDestination(item: $navHolding) { holding in
+            HoldingDetailView(holding: holding, currency: currency)
+        }
         .toast($viewModel.toast)
         .sheet(isPresented: $showAddSheet) {
             AddHoldingView(currency: currency) { holding in
@@ -81,18 +85,21 @@ struct PortfolioView: View {
                 }
             }
             .disabled(viewModel.isRefreshing)
+            .accessibilityLabel("Refresh prices")
         }
         // Trailing: primary tools (AI + Add).
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: onOpenAI) {
                 Image(systemName: "sparkles")
             }
+            .accessibilityLabel("Analyse with AI")
         }
         ToolbarSpacer(.fixed, placement: .topBarTrailing)
         ToolbarItem(placement: .topBarTrailing) {
             Button { showAddSheet = true } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel("Add holding")
         }
     }
 
@@ -100,6 +107,8 @@ struct PortfolioView: View {
 
     @ViewBuilder
     private func heroBand(portrait: Bool) -> some View {
+        // Snapshot once — each access of `summary` re-aggregates all holdings.
+        let summary = self.summary
         let figures = VStack(alignment: .leading, spacing: 0) {
             Text("Total portfolio value").vaultLabel().padding(.bottom, 8)
             Text(Money.currency(summary.currentValue, currency: currency))
@@ -115,16 +124,16 @@ struct PortfolioView: View {
                         .frame(width: 22, height: 22)
                         .background(RoundedRectangle(cornerRadius: 7).fill(Theme.tone(summary.profitLoss).opacity(0.18)))
                     Text(Money.signed(summary.profitLoss, currency: currency))
-                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                        .font(.callout.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.tone(summary.profitLoss))
                         .lineLimit(1).minimumScaleFactor(0.8)
                     Text(Money.percent(summary.returnPercent))
-                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                        .font(.callout.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.tone(summary.profitLoss))
                         .lineLimit(1).minimumScaleFactor(0.8)
                 }
                 Text("Ann. \(Money.percent(summary.annualisedReturn))")
-                    .font(.system(size: 13, design: .monospaced))
+                    .font(.footnote)
                     .foregroundStyle(Theme.inkDim)
                     .lineLimit(1)
             }
@@ -187,17 +196,18 @@ struct PortfolioView: View {
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Holdings").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text("Holdings").font(.title3.weight(.semibold)).foregroundStyle(Theme.ink)
                 Spacer()
-                Text("\(holdings.count) positions").font(.system(size: 14, design: .monospaced)).foregroundStyle(Theme.inkDim)
+                Text("\(holdings.count) positions").font(.footnote).foregroundStyle(Theme.inkDim)
             }
             .padding(.horizontal, 4).padding(.bottom, 14)
 
             List {
                 ForEach(sortedHoldings) { holding in
-                    NavigationLink(value: holding) {
+                    Button { navHolding = holding } label: {
                         HoldingRowView(holding: holding, currency: currency)
                     }
+                    .buttonStyle(PressableRowStyle())
                     .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
                     .listRowBackground(Color.clear)
                     .swipeActions(edge: .trailing) {
@@ -224,15 +234,15 @@ struct PortfolioView: View {
                 .font(.system(size: 54))
                 .foregroundStyle(Theme.inkFaint)
             Text("No holdings yet")
-                .font(.system(size: 22, weight: .semibold))
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Theme.ink)
             Text("Add your first position to see live value, allocation and P&L.")
-                .font(.system(size: 15))
+                .font(.subheadline)
                 .foregroundStyle(Theme.inkDim)
                 .multilineTextAlignment(.center)
             Button { showAddSheet = true } label: {
                 Text("Add holding")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.onButton)
                     .padding(.horizontal, 28).padding(.vertical, 14)
                     .background(Capsule().fill(Theme.gainButton))
@@ -241,32 +251,6 @@ struct PortfolioView: View {
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - Range chips
-
-struct RangeChips: View {
-    @Binding var value: String
-    private let ranges = ["1D", "1W", "1M", "1Y", "ALL"]
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(ranges, id: \.self) { r in
-                Button { value = r } label: {
-                    Text(r)
-                        .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(value == r ? Theme.ink : Theme.inkDim)
-                        .padding(.horizontal, 15).padding(.vertical, 7)
-                        .background(
-                            Capsule().fill(Theme.line.opacity(value == r ? 0.14 : 0))
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(4)
-        .glassPill()
     }
 }
 

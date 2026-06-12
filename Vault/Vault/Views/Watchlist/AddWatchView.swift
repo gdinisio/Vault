@@ -23,46 +23,19 @@ struct AddWatchView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 16)).foregroundStyle(Theme.inkDim)
-                    TextField("Search ticker or company…", text: $query)
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.characters)
-                        .font(.system(size: 16, design: .monospaced))
-                        .foregroundStyle(Theme.ink)
-                        .onChange(of: query) { _, v in scheduleSearch(v) }
-                    if searching {
-                        ProgressView().controlSize(.small)
-                    } else if !query.isEmpty {
-                        Button { query = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16)).foregroundStyle(Theme.inkFaint)
-                        }
-                        .buttonStyle(.plain)
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(results) { r in
+                        Button { add(r) } label: { row(r) }.buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 16)
-                .frame(height: 48)
-                .glassEffect(.regular, in: .capsule)
-                .padding(.horizontal, 30)
-                .padding(.top, 8)
-
-                if let note {
-                    Text(note).font(.system(size: 13)).foregroundStyle(Theme.inkDim)
-                        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 30).padding(.top, 10)
-                }
-
-                ScrollView {
-                    VStack(spacing: 6) {
-                        ForEach(results) { r in
-                            Button { add(r) } label: { row(r) }.buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 24).padding(.top, 14)
-                }
-                .scrollIndicators(.hidden)
+                .padding(.horizontal, 24)
+                .padding(.top, 10)
+            }
+            .scrollIndicators(.hidden)
+            .scrollEdgeEffectStyle(.soft, for: .top)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                searchBar
             }
             .navigationTitle("Add to watchlist")
             .navigationBarTitleDisplayMode(.inline)
@@ -78,11 +51,50 @@ struct AddWatchView: View {
         .presentationDetents([.large, .medium])
     }
 
+    private var searchBar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass").font(.system(size: 16)).foregroundStyle(Theme.inkDim)
+                TextField("Search ticker or company…", text: $query)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.ink)
+                    .onChange(of: query) { _, v in scheduleSearch(v) }
+                if searching {
+                    ProgressView().controlSize(.small)
+                } else if !query.isEmpty {
+                    Button { query = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16)).foregroundStyle(Theme.inkFaint)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 48)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.horizontal, 30)
+            .padding(.top, 8)
+            .padding(.bottom, note != nil ? 4 : 10)
+
+            if let note {
+                Text(note)
+                    .font(.footnote).foregroundStyle(Theme.inkDim)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 30)
+                    .padding(.bottom, 8)
+                    .animation(.default, value: note)
+            }
+        }
+    }
+
     private func row(_ r: AddHoldingView.SymbolResult) -> some View {
         let already = existing.contains(r.symbol)
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(r.symbol).font(.system(size: 15, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.ink)
+                Text(r.symbol).font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.ink)
                 Text(r.name).font(.system(size: 12.5)).foregroundStyle(Theme.inkDim).lineLimit(1)
             }
             Spacer()

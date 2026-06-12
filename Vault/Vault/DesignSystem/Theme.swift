@@ -2,10 +2,10 @@
 //  Theme.swift
 //  Vault
 //
-//  Central design tokens for the Liquid Glass visual language. Colours are
-//  defined as adaptive light/dark pairs and resolve automatically to the
-//  system appearance (the iPad's Light/Dark setting). Derived from the
-//  original OKLCH design system.
+//  Central design tokens, mapped 1:1 onto Apple's semantic colours so the app
+//  inherits the exact system palette (and its Increased-Contrast / Dark-Mode
+//  variants) everywhere. Token names are kept so views read semantically
+//  ("ink", "gain") while resolving to UIKit dynamic colours underneath.
 //
 
 import SwiftUI
@@ -13,89 +13,63 @@ import UIKit
 
 enum Theme {
 
-    // MARK: Semantic colours (adaptive)
+    // MARK: Semantic colours
 
-    /// Soft emerald for gains — slightly deeper in light mode for contrast.
-    static let gain = dyn(dark: Color(red: 0.2, green: 0.8, blue: 0.5),
-                          light: .oklch(0.56, 0.15, 158))
-    /// Soft coral for losses.
-    static let loss = dyn(dark: Color(red: 0.9, green: 0.35, blue: 0.3),
-                          light: .oklch(0.54, 0.20, 25))
-    /// Periwinkle accent.
-    static let accent = dyn(dark: .oklch(0.74, 0.11, 255), light: .oklch(0.52, 0.16, 255))
-    /// Claude / AI lavender.
-    static let aiPurple = dyn(dark: .oklch(0.84, 0.10, 285), light: .oklch(0.52, 0.17, 285))
-    /// Amber used for "warn" tone.
-    static let warn = dyn(dark: .oklch(0.82, 0.13, 75), light: .oklch(0.52, 0.13, 75))
+    /// Gains — the system green Apple uses in Stocks.
+    static let gain = Color(.systemGreen)
+    /// Losses — the system red Apple uses in Stocks.
+    static let loss = Color(.systemRed)
+    /// Accent for interactive highlights.
+    static let accent = Color(.systemBlue)
+    /// AI features.
+    static let aiPurple = Color(.systemPurple)
+    /// Warnings / stale data.
+    static let warn = Color(.systemOrange)
 
-    // MARK: Solid button fills (stay vivid in light AND dark; text on them is dark)
+    // MARK: Solid button fills (text on them is white, like system filled buttons)
 
-    static let gainButton = Color(red: 0.2, green: 0.8, blue: 0.5)
-    static let lossButton = Color(red: 0.9, green: 0.35, blue: 0.3)
-    static let accentButton = Color.oklch(0.74, 0.12, 255)
-    static let aiPurpleButton = Color.oklch(0.78, 0.13, 285)
-    /// Near-black ink that sits on a vivid button fill.
-    static let onButton = Color(red: 0.04, green: 0.06, blue: 0.05)
+    static let gainButton = Color(.systemGreen)
+    static let lossButton = Color(.systemRed)
+    static let accentButton = Color(.systemBlue)
+    static let aiPurpleButton = Color(.systemPurple)
+    /// Ink that sits on a vivid button fill.
+    static let onButton = Color.white
 
-    // MARK: Ink (text)
+    // MARK: Ink (text) — the system label hierarchy
 
-    static let ink = dyn(dark: .oklch(0.97, 0.005, 264), light: .oklch(0.22, 0.02, 264))
-    static let inkSoft = dyn(dark: .oklch(0.80, 0.012, 264), light: .oklch(0.38, 0.02, 264))
-    static let inkDim = dyn(dark: .oklch(0.66, 0.014, 264), light: .oklch(0.50, 0.02, 264))
-    static let inkFaint = dyn(dark: .oklch(0.52, 0.016, 264), light: .oklch(0.64, 0.015, 264))
+    static let ink = Color(.label)
+    static let inkSoft = Color(.secondaryLabel)
+    static let inkDim = Color(.secondaryLabel)
+    static let inkFaint = Color(.tertiaryLabel)
 
-    // MARK: Base background tones
+    // MARK: Backgrounds — flat system canvas
 
-    static let bg0 = dyn(dark: .oklch(0.16, 0.028, 264), light: .oklch(0.95, 0.012, 264))
-    static let bg1 = dyn(dark: .oklch(0.20, 0.030, 264), light: .oklch(0.985, 0.006, 264))
-    static let bgDeep = dyn(dark: Color(red: 0.027, green: 0.031, blue: 0.047),
-                            light: .oklch(0.93, 0.012, 264))
+    /// Flat page/preview background.
+    static let bgDeep = Color(.systemBackground)
 
-    /// Neutral widget background gradient stops (low chroma — matches the app's
-    /// neutralised content surfaces rather than the bluer app chrome).
-    static let widgetBgTop = dyn(dark: .oklch(0.205, 0.006, 264), light: .oklch(0.985, 0.004, 264))
-    static let widgetBgBottom = dyn(dark: .oklch(0.135, 0.006, 264), light: .oklch(0.93, 0.006, 264))
+    /// Hairline base for borders and subtle fills; always used with opacity.
+    static let line = Color(.label)
 
-    /// Adaptive "hairline" base used for glass borders and subtle fills:
-    /// white in dark mode, dark navy in light mode. Always used with opacity.
-    static let line = dyn(dark: .white, light: .oklch(0.28, 0.03, 264))
+    // MARK: Content surfaces
 
-    /// Soft drop shadow under glass cards — deep in dark, gentle in light.
-    static let cardShadow = dyn(dark: Color.black.opacity(0.45), light: Color.black.opacity(0.10))
+    /// Elevated fill for content cards/rows (inset-grouped cell colour).
+    static let surface = Color(.secondarySystemBackground)
+    /// Selected row fill.
+    static let surfaceSelected = Color(.systemFill)
+    /// Hairline border for content surfaces.
+    static let surfaceStroke = Color(.separator)
 
-    // MARK: Matte content surfaces (flat — no material; glass is reserved for chrome)
-
-    /// Opaque, slightly-elevated fill for content cards/rows. Sits *flat* beneath
-    /// the floating Liquid Glass toolbars so the chrome reads as raised glass.
-    static let surface = dyn(dark: .oklch(0.225, 0.006, 264),
-                             light: .oklch(0.995, 0.004, 264))
-    /// Neutral fill for a selected content row — adapts to light/dark like the
-    /// Apple Stocks selected row (a touch lighter on dark, a touch darker on light).
-    static let surfaceSelected = dyn(dark: .oklch(0.305, 0.006, 264),
-                                     light: .oklch(0.930, 0.005, 264))
-    /// Hairline border for matte content surfaces.
-    static let surfaceStroke = dyn(dark: Color.white.opacity(0.06),
-                                   light: Color.black.opacity(0.06))
-    /// Gentle ambient shadow under matte content (lighter than `cardShadow`).
-    static let surfaceShadow = dyn(dark: Color.black.opacity(0.30),
-                                   light: Color.black.opacity(0.06))
-
-    // MARK: Sector accent hues (OKLCH hue angle → Color)
+    // MARK: Sector accents — the system palette
 
     static func sectorColor(_ sector: String) -> Color {
-        dyn(dark: .oklch(0.72, 0.13, sectorHue(sector)),
-            light: .oklch(0.60, 0.15, sectorHue(sector)))
-    }
-
-    static func sectorHue(_ sector: String) -> Double {
         switch sector {
-        case "Technology": return 255
-        case "Index Fund": return 200
-        case "Consumer":   return 312
-        case "Healthcare": return 158
-        case "Energy":     return 60
-        case "Financials": return 255
-        default:           return 255
+        case "Technology": Color(.systemBlue)
+        case "Index Fund": Color(.systemTeal)
+        case "Consumer":   Color(.systemPink)
+        case "Healthcare": Color(.systemMint)
+        case "Energy":     Color(.systemOrange)
+        case "Financials": Color(.systemIndigo)
+        default:           Color(.systemBlue)
         }
     }
 
@@ -110,52 +84,5 @@ enum Theme {
     /// Returns gain/loss colour for a signed value.
     static func tone(_ value: Double) -> Color {
         value >= 0 ? gain : loss
-    }
-
-    /// Build an adaptive colour that resolves to `dark` or `light` based on the
-    /// current user interface style (system Light/Dark setting).
-    static func dyn(dark: Color, light: Color) -> Color {
-        Color(UIColor { trait in
-            UIColor(trait.userInterfaceStyle == .dark ? dark : light)
-        })
-    }
-}
-
-// MARK: - OKLCH → sRGB conversion
-
-extension Color {
-    /// Build a SwiftUI Color from OKLCH components.
-    static func oklch(_ l: Double, _ c: Double, _ h: Double, alpha: Double = 1) -> Color {
-        let hr = h * .pi / 180
-        let a = c * cos(hr)
-        let b = c * sin(hr)
-
-        // OKLab → LMS (cone responses)
-        let l_ = l + 0.3963377774 * a + 0.2158037573 * b
-        let m_ = l - 0.1055613458 * a - 0.0638541728 * b
-        let s_ = l - 0.0894841775 * a - 1.2914855480 * b
-
-        let lCubed = l_ * l_ * l_
-        let mCubed = m_ * m_ * m_
-        let sCubed = s_ * s_ * s_
-
-        // LMS → linear sRGB
-        let rLin =  4.0767416621 * lCubed - 3.3077115913 * mCubed + 0.2309699292 * sCubed
-        let gLin = -1.2684380046 * lCubed + 2.6097574011 * mCubed - 0.3413193965 * sCubed
-        let bLin = -0.0041960863 * lCubed - 0.7034186147 * mCubed + 1.7076147010 * sCubed
-
-        func gamma(_ x: Double) -> Double {
-            let clamped = max(0, x)
-            let v = clamped <= 0.0031308
-                ? 12.92 * clamped
-                : 1.055 * pow(clamped, 1 / 2.4) - 0.055
-            return min(1, max(0, v))
-        }
-
-        return Color(.sRGB,
-                     red: gamma(rLin),
-                     green: gamma(gLin),
-                     blue: gamma(bLin),
-                     opacity: alpha)
     }
 }

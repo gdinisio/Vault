@@ -2,11 +2,15 @@
 //  BackupService.swift
 //  Vault
 //
-//  Manual backup: serialise all SwiftData (holdings, paper positions, trades)
-//  plus cash and currency to a JSON file the user can save into Files / iCloud
-//  Drive, and restore it later. Works on a free Apple account — no iCloud
-//  entitlement needed, because the user picks the destination via the system
-//  document picker.
+//  Manual backup: serialise the full app state — holdings, paper positions,
+//  trades, watchlists and watchlist groups, plus cash, starting cash and the
+//  display-currency setting — to a JSON file the user can save into Files /
+//  iCloud Drive, and restore it later. Works on a free Apple account: no
+//  iCloud entitlement needed, because the user picks the destination via the
+//  system document picker.
+//
+//  API keys are deliberately NOT included — they live in the Keychain and must
+//  never leave the device inside a plain-text backup file.
 //
 
 import Foundation
@@ -17,7 +21,10 @@ import SwiftUI
 // MARK: - Codable snapshot
 
 struct VaultBackup: Codable {
-    var version: Int = 1
+    /// Bumped to 2 when watchlists were added. The watch arrays are optional so
+    /// older v1 files (which lack them) still decode — a missing optional key
+    /// decodes to nil rather than throwing.
+    var version: Int = 2
     var exportedAt: Date = .now
     var cash: Double
     var startingCash: Double
@@ -25,6 +32,8 @@ struct VaultBackup: Codable {
     var holdings: [HoldingDTO]
     var positions: [PositionDTO]
     var trades: [TradeDTO]
+    var watchItems: [WatchItemDTO]? = nil   // v2+
+    var watchlists: [WatchlistDTO]? = nil   // v2+
 
     struct HoldingDTO: Codable {
         var id: UUID
@@ -59,6 +68,22 @@ struct VaultBackup: Codable {
         var type: String
         var timestamp: Date
     }
+
+    struct WatchItemDTO: Codable {
+        var id: UUID
+        var ticker: String
+        var companyName: String
+        var sector: String
+        var addedDate: Date
+        var listName: String
+    }
+
+    struct WatchlistDTO: Codable {
+        var id: UUID
+        var name: String
+        var sortIndex: Int
+        var createdDate: Date
+    }
 }
 
 // MARK: - Service
@@ -78,14 +103,16 @@ enum BackupService {
         return d
     }
 
-    struct Counts { var holdings = 0; var positions = 0; var trades = 0 }
+    struct Counts { var holdings = 0; var positions = 0; var trades = 0; var watchItems = 0 }
 
     /// Build a JSON snapshot of everything currently stored.
     @MainActor
     static func makeBackupData(context: ModelContext, settings: AppSettings, cash: Double) throws -> Data {
-        let holdings = (try? context.fetch(FetchDescriptor<Holding>())) ?? []
-        let positions = (try? context.fetch(FetchDescriptor<PaperPosition>())) ?? []
-        let trades = (try? context.fetch(FetchDescriptor<PaperTrade>())) ?? []
+        let holdings   = (try? context.fetch(FetchDescriptor<Holding>())) ?? []
+        let positions  = (try? context.fetch(FetchDescriptor<PaperPosition>())) ?? []
+        let trades     = (try? context.fetch(FetchDescriptor<PaperTrade>())) ?? []
+        let watchItems = (try? context.fetch(FetchDescriptor<WatchItem>())) ?? []
+        let watchlists = (try? context.fetch(FetchDescriptor<WatchlistGroup>())) ?? []
 
         let backup = VaultBackup(
             cash: cash,
@@ -105,6 +132,13 @@ enum BackupService {
             trades: trades.map {
                 .init(id: $0.id, ticker: $0.ticker, shares: $0.shares, price: $0.price,
                       type: $0.typeRaw, timestamp: $0.timestamp)
+            },
+            watchItems: watchItems.map {
+                .init(id: $0.id, ticker: $0.ticker, companyName: $0.companyName, sector: $0.sector,
+                      addedDate: $0.addedDate, listName: $0.listName)
+            },
+            watchlists: watchlists.map {
+                .init(id: $0.id, name: $0.name, sortIndex: $0.sortIndex, createdDate: $0.createdDate)
             }
         )
         return try encoder.encode(backup)
@@ -116,11 +150,15 @@ enum BackupService {
     static func restore(from data: Data, into context: ModelContext,
                         settings: AppSettings, paperVM: PaperTradingViewModel) throws -> Counts {
         let backup = try decoder.decode(VaultBackup.self, from: data)
+        let watchItems = backup.watchItems ?? []
+        let watchlists = backup.watchlists ?? []
 
         // Wipe existing data first.
         try context.delete(model: Holding.self)
         try context.delete(model: PaperPosition.self)
         try context.delete(model: PaperTrade.self)
+        try context.delete(model: WatchItem.self)
+        try context.delete(model: WatchlistGroup.self)
 
         for h in backup.holdings {
             context.insert(Holding(id: h.id, ticker: h.ticker, companyName: h.companyName, sector: h.sector,
@@ -137,6 +175,18 @@ enum BackupService {
             context.insert(PaperTrade(id: t.id, ticker: t.ticker, shares: t.shares, price: t.price,
                                       type: TradeType(rawValue: t.type) ?? .buy, timestamp: t.timestamp))
         }
+        for w in watchItems {
+            context.insert(WatchItem(id: w.id, ticker: w.ticker, companyName: w.companyName,
+                                     sector: w.sector, addedDate: w.addedDate, listName: w.listName))
+        }
+        for g in watchlists {
+            // WatchlistGroup's init mints a fresh id/date; assign the backed-up
+            // values afterwards so groups round-trip exactly.
+            let group = WatchlistGroup(name: g.name, sortIndex: g.sortIndex)
+            group.id = g.id
+            group.createdDate = g.createdDate
+            context.insert(group)
+        }
         try context.save()
 
         // Restore cash + currency.
@@ -148,7 +198,8 @@ enum BackupService {
 
         return Counts(holdings: backup.holdings.count,
                       positions: backup.positions.count,
-                      trades: backup.trades.count)
+                      trades: backup.trades.count,
+                      watchItems: watchItems.count)
     }
 
     static var suggestedFilename: String {

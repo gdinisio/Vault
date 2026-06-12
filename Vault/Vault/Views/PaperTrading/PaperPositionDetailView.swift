@@ -55,6 +55,8 @@ struct PaperPositionDetailView: View {
                     detailRow("Profit / loss", Money.signed(position.profitLoss, currency: currency), tint: up ? Theme.gain : Theme.loss)
                     detailRow("Return", Money.percent(position.returnPercent), tint: up ? Theme.gain : Theme.loss)
                 }
+
+                NewsSection(symbol: position.ticker)
             }
             .padding(28)
         }
@@ -70,10 +72,14 @@ struct PaperPositionDetailView: View {
             }
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Buy") { Haptics.impact(.light); showBuy = true }
+                Button { Haptics.impact(.light); showBuy = true } label: {
+                    Label("Buy", systemImage: "plus")
+                }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Sell") { Haptics.impact(.rigid); showSell = true }
+                Button { Haptics.impact(.rigid); showSell = true } label: {
+                    Label("Sell", systemImage: "minus")
+                }
             }
         }
         .sheet(isPresented: $showAnalysis) {

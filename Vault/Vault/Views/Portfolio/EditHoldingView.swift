@@ -63,10 +63,14 @@ struct EditHoldingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
+                    Button { save() } label: { Image(systemName: "checkmark") }
+                        .accessibilityLabel("Save")
+                        .buttonStyle(.glassProminent)
+                        .tint(Theme.accentButton)
                         .disabled(!canSave)
                 }
             }
@@ -80,7 +84,7 @@ struct EditHoldingView: View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(holding.ticker).font(.system(size: 19, weight: .semibold)).foregroundStyle(Theme.ink)
-                Text(holding.companyName).font(.system(size: 13)).foregroundStyle(Theme.inkDim).lineLimit(1)
+                Text(holding.companyName).font(.footnote).foregroundStyle(Theme.inkDim).lineLimit(1)
             }
             Spacer()
         }
@@ -103,18 +107,17 @@ struct EditHoldingView: View {
         Grid(horizontalSpacing: 22, verticalSpacing: 16) {
             GridRow {
                 labelledField("Number of shares") { numericField($sharesText, placeholder: "0") }
-                labelledField("Purchase price (\(entryCurrency.symbol))") { numericField($priceText, placeholder: "0.00") }
+                labelledField("Purchase price") { numericField($priceText, placeholder: "0.00") }
             }
             GridRow {
                 labelledField("Purchase date") {
                     DatePicker("", selection: $purchaseDate, in: ...Date.now, displayedComponents: .date)
                         .labelsHidden().datePickerStyle(.compact)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12).padding(.vertical, 7).fieldBackground()
                 }
                 HStack(spacing: 16) {
-                    labelledField("FX charge (\(entryCurrency.symbol))") { numericField($fxText, placeholder: "0.00") }
-                    labelledField("Broker fee (\(entryCurrency.symbol))") { numericField($feeText, placeholder: "0.00") }
+                    labelledField("FX charge") { numericField($fxText, placeholder: "0.00") }
+                    labelledField("Broker fee") { numericField($feeText, placeholder: "0.00") }
                 }
             }
         }

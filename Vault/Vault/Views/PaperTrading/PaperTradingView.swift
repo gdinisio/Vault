@@ -77,12 +77,14 @@ struct PaperTradingView: View {
                 }
             }
             .disabled(viewModel.isRefreshing)
+            .accessibilityLabel("Refresh prices")
         }
         // Trailing: primary tools (AI + Buy).
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: onOpenAI) {
                 Image(systemName: "sparkles")
             }
+            .accessibilityLabel("Analyse with AI")
         }
         ToolbarSpacer(.fixed, placement: .topBarTrailing)
         ToolbarItem(placement: .topBarTrailing) {
@@ -105,6 +107,8 @@ struct PaperTradingView: View {
 
     @ViewBuilder
     private func equityBand(portrait: Bool) -> some View {
+        // Snapshot once — each access of `summary` re-aggregates all positions.
+        let summary = self.summary
         // Hero equity value
         let equityValue = VStack(alignment: .leading, spacing: 6) {
             Text("Account equity").vaultLabel()
@@ -126,7 +130,7 @@ struct PaperTradingView: View {
                     Text(Money.signed(summary.openProfitLoss, currency: currency))
                     Text(Money.percent(summary.openReturnPercent))
                 }
-                .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                .font(.callout.weight(.semibold).monospacedDigit())
                 .foregroundStyle(Theme.tone(summary.openProfitLoss))
                 .lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -138,7 +142,7 @@ struct PaperTradingView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Virtual cash").vaultLabel()
                 Text(Money.currency0(viewModel.cash, currency: currency))
-                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -190,9 +194,9 @@ struct PaperTradingView: View {
     private var positionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Open positions").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text("Open positions").font(.title3.weight(.semibold)).foregroundStyle(Theme.ink)
                 Spacer()
-                Text("\(positions.count) open").font(.system(size: 14, design: .monospaced)).foregroundStyle(Theme.inkDim)
+                Text("\(positions.count) open").font(.footnote).foregroundStyle(Theme.inkDim)
             }
             .padding(.horizontal, 4)
 
@@ -217,15 +221,16 @@ struct PaperTradingView: View {
     }
 
     private var equityCurve: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let openPL = summary.openProfitLoss
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Equity curve").font(.system(size: 21, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text("Equity curve").font(.title3.weight(.semibold)).foregroundStyle(Theme.ink)
                 Spacer()
-                Text("session").font(.system(size: 13, design: .monospaced)).foregroundStyle(Theme.inkDim)
+                Text("session").font(.footnote).foregroundStyle(Theme.inkDim)
             }
             SparklineView(
-                points: Spark.series(seed: 3.1, count: 70, trendingUp: summary.openProfitLoss >= 0),
-                color: Theme.tone(summary.openProfitLoss)
+                points: Spark.series(seed: 3.1, count: 70, trendingUp: openPL >= 0),
+                color: Theme.tone(openPL)
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -237,8 +242,8 @@ struct PaperTradingView: View {
     private var emptyPositions: some View {
         VStack(spacing: 12) {
             Image(systemName: "tray").font(.system(size: 40)).foregroundStyle(Theme.inkFaint)
-            Text("No open positions").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.ink)
-            Text("Tap Buy to place your first paper order.").font(.system(size: 14)).foregroundStyle(Theme.inkDim)
+            Text("No open positions").font(.headline).foregroundStyle(Theme.ink)
+            Text("Tap Buy to place your first paper order.").font(.subheadline).foregroundStyle(Theme.inkDim)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
         .contentCard(cornerRadius: 22)

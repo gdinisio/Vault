@@ -14,7 +14,6 @@ struct AllocationCardView: View {
     var currency: DisplayCurrency = .gbp
 
     @State private var selected: String?
-    @State private var selectedValue: Double?
 
     private var total: Double { slices.reduce(0) { $0 + $1.value } }
     private var selectedSlice: AllocationSlice? { slices.first { $0.ticker == selected } }
@@ -51,10 +50,10 @@ struct AllocationCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Allocation")
-                .font(.system(size: 21, weight: .semibold))
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(Theme.ink)
             Text(subtitle)
-                .font(.system(size: 14))
+                .font(.subheadline)
                 .foregroundStyle(Theme.inkDim)
                 .contentTransition(.opacity)
                 .padding(.bottom, 14)
@@ -84,25 +83,55 @@ struct AllocationCardView: View {
             .opacity(selected == nil || selected == slice.ticker ? 1 : 0.3)
         }
         .chartLegend(.hidden)
-        .chartAngleSelection(value: $selectedValue)
         .chartBackground { _ in
             VStack(spacing: 3) {
                 Text(centreValue)
-                    .font(.system(size: 34, weight: .semibold, design: .monospaced))
+                    .font(.largeTitle.weight(.semibold).monospacedDigit())
                     .foregroundStyle(centreColor)
                     .contentTransition(.numericText())
                 Text(centreLabel)
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .foregroundStyle(Theme.ink)
                 Text(centreSub)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.caption.monospacedDigit())
                     .foregroundStyle(Theme.inkDim)
             }
             .animation(.easeInOut(duration: 0.2), value: selected)
         }
+        .chartOverlay { _ in
+            GeometryReader { geo in
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        SpatialTapGesture().onEnded { value in
+                            selectSlice(at: value.location, in: geo.size)
+                        }
+                    )
+            }
+        }
         .animation(.bouncy(duration: 0.35), value: selected)
-        .onChange(of: selectedValue) { _, value in
-            guard let value, let ticker = sliceFor(value: value)?.ticker else { return }
+    }
+
+    /// Reliable hit-testing for the donut: map a tap's angle to its slice.
+    /// `chartAngleSelection` misses taps near the angular insets / rounded
+    /// slice edges; this covers the whole ring (and clears on a centre tap).
+    private func selectSlice(at point: CGPoint, in size: CGSize) {
+        guard total > 0 else { return }
+        let dx = point.x - size.width / 2
+        let dy = point.y - size.height / 2
+        let radius = hypot(dx, dy)
+        let maxR = min(size.width, size.height) / 2
+        // Tap inside the centre hole clears the selection.
+        if radius < maxR * 0.6 {
+            if selected != nil { withAnimation(.bouncy(duration: 0.35)) { selected = nil } }
+            return
+        }
+        guard radius <= maxR * 1.1 else { return }
+        // Angle clockwise from 12 o'clock (SectorMark's start), 0..<2π.
+        var angle = atan2(dx, -dy)
+        if angle < 0 { angle += 2 * .pi }
+        let target = angle / (2 * .pi) * total
+        if let ticker = sliceFor(value: target)?.ticker {
             withAnimation(.bouncy(duration: 0.35)) {
                 selected = (selected == ticker) ? nil : ticker
             }
@@ -124,7 +153,7 @@ struct AllocationCardView: View {
                             .scaleEffect(selected == slice.ticker ? 1.25 : 1)
                         HStack(spacing: 5) {
                             Text(slice.ticker)
-                                .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
+                                .font(.subheadline.weight(.semibold).monospacedDigit())
                                 .foregroundStyle(Theme.ink)
                             if slice.lotCount > 1 {
                                 Text("×\(slice.lotCount)")
@@ -139,11 +168,11 @@ struct AllocationCardView: View {
                         }
                         .frame(width: 84, alignment: .leading)
                         Text(Money.currency0(slice.value, currency: currency))
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.footnote)
                             .foregroundStyle(Theme.inkDim)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text(String(format: "%.1f%%", slice.fraction * 100))
-                            .font(.system(size: 14.5, weight: .semibold, design: .monospaced))
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
                             .foregroundStyle(selected == slice.ticker ? centreColorFor(slice) : Theme.ink)
                     }
                     .padding(.horizontal, 8)
